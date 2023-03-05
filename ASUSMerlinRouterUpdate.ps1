@@ -2,15 +2,15 @@
 $DownloadandBackupOnly = $False
 $BackupDDNSCert = $True
 $Model = "RT-AX88U"
-$IP = "192.168.50.1"
+$IP = "192.168.1.1"
 $User = "Admin"
 $Password = "PASSWORDHERE"
-$DDNSDomain = "Plex-Request.asuscomm.com"
+$DDNSDomain = "DDNS.asuscomm.com"
 
 # Set System Values
-$downloadDir = "H:\Joel\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
-$ExtractedDir = "H:\Joel\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
-$LocalConfig = "H:\Joel\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
+$downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
+$ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
+$LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
 $Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $FileType = "*.w"
 
