@@ -1,7 +1,7 @@
 # ASUS-Merlin-Firmware-Update
 Remotely Update ASUS Merlin Router Firmware Script
 
-This script allows you to remotely identify an beta or stable firmware updates for an ASUS Merlin router and automatically download and update via an unattended method.
+This script allows you to remotely identify a beta or stable firmware update for an ASUS Merlin router, and automatically download and update via an unattended method.
 
 1. Please make sure you have putty *installed* and not just as a portable .exe.
 2. You will to generate a ssh key using the following command in Powershell: "ssh-keygen" (And use all default values: "Enter", "Enter", "Enter")
