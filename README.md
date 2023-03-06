@@ -4,7 +4,7 @@ Remotely Update ASUS Merlin Router Firmware Script
 This script allows you to remotely identify a beta or stable firmware update for an ASUS Merlin router, and automatically download and update via an unattended method.
 
 General Instructions
-This scripts are targeted to be used on Asus routers running the modified Asuswrt-Merlin software. To use this scripts you must first have.
+This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software. To use this scripts you must first have.
 
 1. Enable SSH access, https://www.htpcguides.com/enable-ssh-asus-routers-without-ssh-keys/ 
 If you want to access via SSH throught the open internet (LAN + WAN). I highly recommend changing the port and disabling username password authentication (only using RSA keys).
