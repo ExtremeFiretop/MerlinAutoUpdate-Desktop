@@ -1,5 +1,6 @@
 ﻿# Set Router Values
 $DownloadandBackupOnly = $False
+$DDNSCertInstall = $True
 $BackupDDNSCert = $True
 $Model = "RT-AX88U"
 $IP = "192.168.1.1"
@@ -11,6 +12,7 @@ $DDNSDomain = "DDNS.asuscomm.com"
 $downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
 $ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
 $LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
+$nginx = "C:\ProgramData\nginx"
 $Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $FileType = "*.w"
 
@@ -137,6 +139,33 @@ $NewestBuildW = [pscustomobject]@{
 
 }
 
+if($BackupDDNSCert -eq $True){
+Show-Notification "Downloading DDNS Certs"
+
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$LocalConfig\SSL Cert" | Out-null
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$LocalConfig\SSL Cert" | Out-null
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$LocalConfig\SSL Cert" | Out-null
+
+if($DDNSCertInstall -eq $True){
+Copy-Item -Path "$LocalConfig\SSL Cert\Domain.key" -Destination "$nginx\key.pem" -Force
+Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$nginx\cert.pem" -Force
+
+Start-Sleep -Seconds 1
+
+Get-Service -Name nginx | Stop-Service
+
+Start-Sleep -Seconds 5
+
+# Start the service
+Start-Service -Name NGINX
+
+Start-Sleep -Seconds 5
+
+Show-Notification "DDNS Certs Installed for Nginx"
+
+Start-Sleep -Seconds 5
+}}
+
 $maxAttempts = 3
 $attempt = 1
 $validChecksum = $false
@@ -170,14 +199,6 @@ $NewestBuildName"
             $BuildName = ($NewestBuildName -replace '\.zip$', '').TrimEnd('.')
 
             Show-Notification "Downloading Router Backups"
-
-            if($BackupDDNSCert -eq $True){
-            & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$LocalConfig\SSL Cert" | Out-null
-            & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$LocalConfig\SSL Cert" | Out-null
-            & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$LocalConfig\SSL Cert" | Out-null
-
-            Start-Sleep -Seconds 1
-            }
 
             ssh -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG"
 
