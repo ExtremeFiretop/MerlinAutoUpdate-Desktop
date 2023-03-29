@@ -55,7 +55,11 @@ $htmlrelease = Invoke-WebRequest $urlrelease
 # Find all the links on the page and filter for those that were uploaded in the last week
 $NewLinksBeta = $htmlbeta.Links | Where-Object {
     $_.innerText -match "$Model_[\d\.]+_.*\.zip"
-} | Sort-Object {[int]($_.innerText -replace '.*beta(\d+)\.zip','$1')} -Descending
+} | Sort-Object {
+    $version = ($_ -split '_')[1]
+    $versionComponents = $version -split '\.'
+    [version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])
+} -Descending
 
 # Find all the links on the page and filter for those that were uploaded in the last week
 $NewLinksRelease = $htmlrelease.Links | Where-Object {
