@@ -1,20 +1,20 @@
-﻿# Set Router Values
-$DownloadandBackupOnly = $False
-$DDNSCertInstall = $True
-$BackupDDNSCert = $True
-$Model = "RT-AX88U"
-$IP = "192.168.1.1"
-$User = "Admin"
-$Password = "PASSWORDHERE"
-$DDNSDomain = "DDNS.asuscomm.com"
+# Set Router Values
+$script:DownloadandBackupOnly = $False
+$script:BackupDDNSCert = $True
+$script:DDNSCertInstall = $True
+$script:Model = "RT-AX88U"
+$script:IP = "192.168.1.1"
+$script:User = "Admin"
+$script:Password = "PASSWORDHERE"
+$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com"
 
 # Set System Values
-$downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
-$ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
-$LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
-$nginx = "C:\ProgramData\nginx"
-$Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
-$FileType = "*.w"
+$script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
+$script:ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
+$script:LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
+$script:nginx = "C:\ProgramData\nginx"
+$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
+$script:FileType = "*.w"
 
 
 function Show-Notification {
@@ -54,21 +54,21 @@ $htmlrelease = Invoke-WebRequest $urlrelease
 
 # Find all the links on the page and filter for those that were uploaded in the last week
 $NewLinksBeta = $htmlbeta.Links | Where-Object {
-    $_.innerText -match "$Model_[\d\.]+_.*\.zip"
-} | Sort-Object {
+    $_.innerText -match "$Model_[\d\.]+_.*\.zip" -and $_.innerText -match "beta"
+} | Sort-Object LastWriteTime -Descending | ForEach-Object {
     $version = ($_ -split '_')[1]
     $versionComponents = $version -split '\.'
-    [version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])
-} -Descending
+    $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
+} | Sort-Object ParsedVersion -Descending
 
 # Find all the links on the page and filter for those that were uploaded in the last week
 $NewLinksRelease = $htmlrelease.Links | Where-Object {
     $_.innerText -match "$Model_[\d\.]+_.*\.zip"
-} | Sort-Object {
+} | ForEach-Object {
     $version = ($_ -split '_')[1]
     $versionComponents = $version -split '\.'
-    [version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])
-} -Descending
+    $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
+} | Sort-Object ParsedVersion -Descending
 
 $WebReleases = @($NewLinksBeta[0], $NewLinksRelease[0])
 $NewestWebVersion = $null
@@ -174,7 +174,11 @@ $maxAttempts = 3
 $attempt = 1
 $validChecksum = $false
 
-    if ([string]::IsNullOrEmpty($ToDateFirmware) -or [version]$NewestBuildW.Version -gt [version]$FirmwareBuild.Version -or ($NewestBuildW.IsBeta -and (!$FirmwareBuild.IsBeta) -or (!$NewestBuildW.IsBeta -and ($FirmwareBuild.IsBeta))))
+# Extract beta numbers from the file names
+$NewestBuildWBetaNumber = ($NewestBuildW.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
+$FirmwareBuildBetaNumber = ($FirmwareBuild.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
+
+    if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$FirmwareBuild.Version) -or ($NewestBuildW.IsBeta -and !$FirmwareBuild.IsBeta) -or (!$NewestBuildW.IsBeta -and $FirmwareBuild.IsBeta) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber))
     {
      do {
         Show-Notification "Downloading Firmware Update: 
@@ -222,7 +226,7 @@ $NewestBuildName"
 
             Show-Notification "Flashing Router Firmware"
 
-            ssh -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write /$fileName"
+            ssh -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName"
 
             Start-Sleep -Seconds 65
 
