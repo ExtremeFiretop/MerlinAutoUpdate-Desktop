@@ -16,7 +16,12 @@ $script:nginx = "C:\ProgramData\nginx"
 $script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $script:FileType = "*.w"
 
+# Set the web page urls
+$urlbeta = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Beta/"
+$urlrelease = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Release/"
 
+
+# Show Windows Toast Notification Function
 function Show-Notification {
     [cmdletbinding()]
     Param (
@@ -45,14 +50,11 @@ function Show-Notification {
     $Notifier.Show($Toast);
 }
 
-# Set the web page urls
-$urlbeta = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Beta/"
-$urlrelease = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Release/"
 # Get the web page content
 $htmlbeta = Invoke-WebRequest $urlbeta
 $htmlrelease = Invoke-WebRequest $urlrelease
 
-# Find all the links on the page and filter for those that were uploaded in the last week
+# Find all the beta links on the page, and filter for those that were the newest beta build
 $NewLinksBeta = $htmlbeta.Links | Where-Object {
     $_.innerText -match "$Model_[\d\.]+_.*\.zip" -and $_.innerText -match "beta"
 } | Sort-Object LastWriteTime -Descending | ForEach-Object {
@@ -61,7 +63,7 @@ $NewLinksBeta = $htmlbeta.Links | Where-Object {
     $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
 } | Sort-Object ParsedVersion -Descending
 
-# Find all the links on the page and filter for those that were uploaded in the last week
+# Find all the production links on the page and filter for those that were the newest production build.
 $NewLinksRelease = $htmlrelease.Links | Where-Object {
     $_.innerText -match "$Model_[\d\.]+_.*\.zip"
 } | ForEach-Object {
@@ -70,9 +72,11 @@ $NewLinksRelease = $htmlrelease.Links | Where-Object {
     $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
 } | Sort-Object ParsedVersion -Descending
 
+# Save Both Newest Beta and Production to a Table
 $WebReleases = @($NewLinksBeta[0], $NewLinksRelease[0])
-$NewestWebVersion = $null
 
+# Determine Which Between Beta and Production is Highest/Newest.
+$NewestWebVersion = $null
 foreach ($release in $WebReleases) {
     # Extract version number from file name
     $release1Version = $release.outerText.ToString() -replace "^.*?_(\d+\.\d+).*", '$1'
@@ -100,19 +104,24 @@ foreach ($release in $WebReleases) {
     }
 }
 
+# Winning Online Build Info Between Beta and Production
 $NewestBuildName = $NewestWebVersion.outerText.ToString()
 $NewestBuildLink = $NewestWebVersion.href.ToString()
+
+# Get Local Build Info
 $ToDateFirmware = (Get-ChildItem -Path "$downloadDir" -File).Name
 $LocalVersion = $ToDateFirmware -replace "^.*?_(\d+\.\d+).*", '$1'
 $isBeta = $ToDateFirmware -match "beta"
-$FirmwareBuild = [pscustomobject]@{
+$LocalFirmwareBuild = [pscustomobject]@{
             Version = $LocalVersion
             IsBeta = $isBeta
             FileName = $ToDateFirmware
             }
 
+# Compare Newest Online Winning Build Between Beta and Production to Current Local Build (Only if it exists)
 if(-not[string]::IsNullOrEmpty($ToDateFirmware)){
 
+# Save Both Newest Beta and Production to a Table
 $BuildReleases = @($NewestBuildName, $ToDateFirmware)
 
 $NewestBuildW = $null
@@ -133,16 +142,20 @@ foreach ($version in $BuildReleases) {
     }
 }
 
-$LocalVersion = $winner -replace "^.*?([0-9]+\.[0-9]+).*?$", '$1'
+$LvWWinnerVersion = $winner -replace "^.*?([0-9]+\.[0-9]+).*?$", '$1'
 $isBeta = $winner -like "*beta*"
 $NewestBuildW = [pscustomobject]@{
-    Version = $LocalVersion
+    Version = $LvWWinnerVersion
     IsBeta = $isBeta
     FileName = $winner
+    }
 }
 
-}
+# Extract Beta Only Numbers from the File Names
+$NewestBuildWBetaNumber = ($NewestBuildW.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
+$FirmwareBuildBetaNumber = ($LocalFirmwareBuild.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
 
+# Enable or Disable DDNS Certificate Backup.
 if($BackupDDNSCert -eq $True){
 Show-Notification "Downloading DDNS Certs"
 
@@ -170,15 +183,13 @@ Show-Notification "DDNS Certs Installed for Nginx"
 Start-Sleep -Seconds 5
 }}
 
+# Set Max Attempts to Retry Download if Hash Check Fails.
 $maxAttempts = 3
 $attempt = 1
 $validChecksum = $false
 
-# Extract beta numbers from the file names
-$NewestBuildWBetaNumber = ($NewestBuildW.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
-$FirmwareBuildBetaNumber = ($FirmwareBuild.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
-
-    if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$FirmwareBuild.Version) -or ($NewestBuildW.IsBeta -and !$FirmwareBuild.IsBeta) -or (!$NewestBuildW.IsBeta -and $FirmwareBuild.IsBeta) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber))
+# Only proceed if current build does not exist, or if newest online build is greater than local build, or if online beta build is greater than local beta build.
+    if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$LocalFirmwareBuild.Version) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber))
     {
      do {
         Show-Notification "Downloading Firmware Update: 
