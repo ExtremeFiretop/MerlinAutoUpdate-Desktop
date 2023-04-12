@@ -189,7 +189,7 @@ $attempt = 1
 $validChecksum = $false
 
 # Only proceed if current build does not exist, or if newest online build is greater than local build, or if online beta build is greater than local beta build.
-    if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$LocalFirmwareBuild.Version) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber))
+    if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$LocalFirmwareBuild.Version) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber) -or (($LocalFirmwareBuild.IsBeta -and !$NewestBuildW.IsBeta -and [version]$NewestBuildW.Version -eq [version]$LocalFirmwareBuild.Version)))
     {
      do {
         Show-Notification "Downloading Firmware Update: 
