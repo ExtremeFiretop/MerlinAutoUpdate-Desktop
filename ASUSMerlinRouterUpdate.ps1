@@ -152,8 +152,10 @@ $NewestBuildW = [pscustomobject]@{
 }
 
 # Extract Beta Only Numbers from the File Names
+if($NewestBuildW.IsBeta){
 $NewestBuildWBetaNumber = ($NewestBuildW.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
 $FirmwareBuildBetaNumber = ($LocalFirmwareBuild.FileName -replace '^.*_beta(\d+)\.zip$', '$1')
+}
 
 # Enable or Disable DDNS Certificate Backup.
 if($BackupDDNSCert -eq $True){
