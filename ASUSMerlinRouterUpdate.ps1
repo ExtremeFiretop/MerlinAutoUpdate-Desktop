@@ -66,7 +66,7 @@ $NewLinksBeta = $htmlbeta.Links | Where-Object {
 # Find all the production links on the page and filter for those that were the newest production build.
 $NewLinksRelease = $htmlrelease.Links | Where-Object {
     $_.innerText -match "$Model_[\d\.]+_.*\.zip"
-} | ForEach-Object {
+} | Sort-Object LastWriteTime -Descending | ForEach-Object {
     $version = ($_ -split '_')[1]
     $versionComponents = $version -split '\.'
     $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
@@ -110,10 +110,15 @@ $NewestBuildLink = $NewestWebVersion.href.ToString()
 
 # Get Local Build Info
 $ToDateFirmware = (Get-ChildItem -Path "$downloadDir" -File).Name
-$LocalVersion = $ToDateFirmware -replace "^.*?_(\d+\.\d+).*", '$1'
+$LocalVersion = $ToDateFirmware -replace "^.*?([0-9]+\.[0-9]+(?:_[0-9]+)?).*?$", '$1'
+$major, $minor, $build = $LocalVersion -split '\.|_' | ForEach-Object { [int]$_ }
+# Construct a new Version object from the version components
+$ReconstructedversionL = New-Object -TypeName System.Version -ArgumentList $major, $minor, $build, 0
+$winnerVersionL = New-Object -TypeName System.Version -ArgumentList $ReconstructedversionL
+
 $isBeta = $ToDateFirmware -match "beta"
 $LocalFirmwareBuild = [pscustomobject]@{
-            Version = $LocalVersion
+            Version = $winnerVersionL
             IsBeta = $isBeta
             FileName = $ToDateFirmware
             }
@@ -130,7 +135,7 @@ $winner = $null
 
 foreach ($version in $BuildReleases) {
     # Extract the version number from the release string
-    $versionNumber = $version -replace "^.*?([0-9]+\.[0-9]+).*?$", '$1'
+    $versionNumber = $version -replace "^.*?([0-9]+\.[0-9]+(?:_[0-9]+)?).*?$", '$1'
 
     if ($highestVersion -eq $null -or $versionNumber -gt $highestVersion) {
         # If this version number is higher than the current highest, set it as the new highest
@@ -142,10 +147,16 @@ foreach ($version in $BuildReleases) {
     }
 }
 
-$LvWWinnerVersion = $winner -replace "^.*?([0-9]+\.[0-9]+).*?$", '$1'
+$LvWWinnerVersion = $winner -replace "^.*?([0-9]+\.[0-9]+(?:_[0-9]+)?).*?$", '$1'
+# Split the version string into its components
+$major, $minor, $build = $LvWWinnerVersion -split '\.|_' | ForEach-Object { [int]$_ }
+# Construct a new Version object from the version components
+$Reconstructedversion = New-Object -TypeName System.Version -ArgumentList $major, $minor, $build, 0
+$winnerVersion = New-Object -TypeName System.Version -ArgumentList $Reconstructedversion
+
 $isBeta = $winner -like "*beta*"
 $NewestBuildW = [pscustomobject]@{
-    Version = $LvWWinnerVersion
+    Version = $winnerVersion
     IsBeta = $isBeta
     FileName = $winner
     }
@@ -166,12 +177,23 @@ Show-Notification "Downloading DDNS Certs"
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$LocalConfig\SSL Cert" | Out-null
 
 if($DDNSCertInstall -eq $True){
-Copy-Item -Path "$LocalConfig\SSL Cert\Domain.key" -Destination "$nginx\key.pem" -Force
-Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$nginx\cert.pem" -Force
-
-Start-Sleep -Seconds 1
 
 Get-Service -Name nginx | Stop-Service
+
+Start-Sleep -Seconds 5
+
+if ((Get-Service -Name "NGINX").Status -eq "Running") {
+Show-Notification "Problems Stopping Nginx service"
+
+Start-Sleep -Seconds 10
+}
+else{
+Show-Notification "Nginx Stopped Temporarily"
+
+Start-Sleep -Seconds 10
+
+Copy-Item -Path "$LocalConfig\SSL Cert\Domain.key" -Destination "$nginx\key.pem" -Force
+Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$nginx\cert.pem" -Force
 
 Start-Sleep -Seconds 5
 
@@ -180,9 +202,16 @@ Start-Service -Name NGINX
 
 Start-Sleep -Seconds 5
 
+if ((Get-Service -Name "NGINX").Status -eq "Running") {
 Show-Notification "DDNS Certs Installed for Nginx"
 
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 10
+}
+else{Show-Notification "Problems Starting Nginx Service"
+
+Start-Sleep -Seconds 10
+}
+}
 }}
 
 # Set Max Attempts to Retry Download if Hash Check Fails.
@@ -190,8 +219,8 @@ $maxAttempts = 3
 $attempt = 1
 $validChecksum = $false
 
-# Only proceed if current build does not exist, or if newest online build is greater than local build, or if online beta build is greater than local beta build.
-    if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$LocalFirmwareBuild.Version) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber) -or (($LocalFirmwareBuild.IsBeta -and !$NewestBuildW.IsBeta -and [version]$NewestBuildW.Version -eq [version]$LocalFirmwareBuild.Version)))
+# Only proceed if current build does not exist, or if newest online build is greater than local build, or if online beta build is greater than local beta build, or if the local build version matches online but local is beta and online is production.
+if ([string]::IsNullOrEmpty($ToDateFirmware) -or ([version]$NewestBuildW.Version -gt [version]$LocalFirmwareBuild.Version) -or ([int]$NewestBuildWBetaNumber -gt [int]$FirmwareBuildBetaNumber) -or (($LocalFirmwareBuild.IsBeta -and !$NewestBuildW.IsBeta -and [version]$NewestBuildW.Version -eq [version]$LocalFirmwareBuild.Version)))
     {
      do {
         Show-Notification "Downloading Firmware Update: 
@@ -256,5 +285,10 @@ $NewestBuildName"
     } while (!$validChecksum -and $attempt -le $maxAttempts)
 } else {
 Show-Notification "No Firmware Updates Available"
+
+Start-Sleep -Seconds 10
+
 exit
 }
+
+exit
