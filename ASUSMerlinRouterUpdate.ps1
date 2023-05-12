@@ -13,6 +13,7 @@ $script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 
 $script:ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
 $script:LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
 $script:nginx = "C:\ProgramData\nginx"
+$script:WebService = "NGINX"
 $script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $script:FileType = "*.w"
 
@@ -178,17 +179,17 @@ Show-Notification "Downloading DDNS Certs"
 
 if($DDNSCertInstall -eq $True){
 
-Get-Service -Name nginx | Stop-Service
+Get-Service -Name "$script:WebService" | Stop-Service
 
 Start-Sleep -Seconds 5
 
-if ((Get-Service -Name "NGINX").Status -eq "Running") {
-Show-Notification "Problems Stopping Nginx service"
+if ((Get-Service -Name "$script:WebService").Status -eq "Running") {
+Show-Notification "Problems Stopping $script:WebService service"
 
 Start-Sleep -Seconds 10
 }
 else{
-Show-Notification "Nginx Stopped Temporarily"
+Show-Notification "$script:WebService Stopped Temporarily"
 
 Start-Sleep -Seconds 10
 
@@ -198,16 +199,16 @@ Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$nginx\cert.
 Start-Sleep -Seconds 5
 
 # Start the service
-Start-Service -Name NGINX
+Start-Service -Name "$script:WebService"
 
 Start-Sleep -Seconds 5
 
-if ((Get-Service -Name "NGINX").Status -eq "Running") {
-Show-Notification "DDNS Certs Installed for Nginx"
+if ((Get-Service -Name "$script:WebService").Status -eq "Running") {
+Show-Notification "DDNS Certs Installed for $script:WebService"
 
 Start-Sleep -Seconds 10
 }
-else{Show-Notification "Problems Starting Nginx Service"
+else{Show-Notification "Problems Starting $script:WebService Service"
 
 Start-Sleep -Seconds 10
 }
@@ -230,7 +231,7 @@ $NewestBuildName"
 
         # Download each new file to the specified directory
         $downloadPath = Join-Path "$downloadDir" $NewestBuildName
-        Invoke-WebRequest $NewestBuildLink -OutFile $downloadPath -UserAgent [Microsoft.PowerShell.Commands.PSUserAgent]::Chrome
+        Invoke-WebRequest $NewestBuildLink -OutFile $downloadPath -UserAgent $script:Browser
 
         Unblock-File -Path $downloadPath
         Expand-Archive -Path $downloadPath -DestinationPath "$ExtractedDir" -Force
