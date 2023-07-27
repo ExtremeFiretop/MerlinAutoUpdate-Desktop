@@ -6,7 +6,7 @@ $script:Model = "RT-AX88U"
 $script:IP = "192.168.1.1"
 $script:User = "Admin"
 $script:Password = "PASSWORDHERE"
-$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com"
+$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #On Firmware older than 388.4 the _ecc can be left back, else do not change it.
 
 # Set System Values
 $script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
@@ -251,7 +251,11 @@ $NewestBuildName"
 
             Show-Notification "Downloading Router Backups"
 
-            ssh -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG"
+            $configbackupresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            if ($configbackupresult -like '*Host key verification failed.*') {
+            Show-Notification "Host key verification failed.
+Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
+            }
 
             Start-Sleep -Seconds 1
 
@@ -269,13 +273,21 @@ $NewestBuildName"
 
             Show-Notification "Flashing Router Firmware"
 
-            ssh -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName"
+            $flashresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            if ($flashresult -like '*Host key verification failed.*') {
+            Show-Notification "Host key verification failed.
+Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
+            }
 
             Start-Sleep -Seconds 65
 
             Show-Notification "Rebooting Router"
 
-            ssh -i ~/.ssh/id_rsa "${User}@${IP}" "reboot"
+            $rebootresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+            if ($rebootresult -like '*Host key verification failed.*') {
+            Show-Notification "Host key verification failed.
+Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
+            }
             }
 
             exit
