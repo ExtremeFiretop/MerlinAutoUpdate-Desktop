@@ -6,7 +6,7 @@ $script:Model = "RT-AX88U"
 $script:IP = "192.168.1.1"
 $script:User = "Admin"
 $script:Password = "PASSWORDHERE"
-$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #On Firmware older than 388.4 the _ecc can be left back, else do not change it.
+$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #On Firmware older than 388.4 the _ecc can be removed, else do not change it.
 
 # Set System Values
 $script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
