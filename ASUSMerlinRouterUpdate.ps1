@@ -12,7 +12,7 @@ $script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #On Firmware older tha
 $script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
 $script:ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
 $script:LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
-$script:nginx = "C:\ProgramData\nginx"
+$script:LocalCertPath = "C:\ProgramData\nginx"
 $script:WebService = "NGINX"
 $script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $script:FileType = "*.w"
@@ -193,8 +193,8 @@ Show-Notification "$script:WebService Stopped Temporarily"
 
 Start-Sleep -Seconds 10
 
-Copy-Item -Path "$LocalConfig\SSL Cert\Domain.key" -Destination "$nginx\key.pem" -Force
-Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$nginx\cert.pem" -Force
+Copy-Item -Path "$LocalConfig\SSL Cert\Domain.key" -Destination "$script:LocalCertPath\key.pem" -Force
+Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$script:LocalCertPath\cert.pem" -Force
 
 Start-Sleep -Seconds 5
 
