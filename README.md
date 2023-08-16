@@ -25,28 +25,28 @@ Script Setup:
 
 # Set Router Values   
 -"$script:DownloadandBackupOnly"
-(VALUES: $TRUE/$FALSE) - "$TRUE" means the script will only download the firmware, and backup the routers configuration files, without doing a firmware update.
+-(VALUES: $TRUE/$FALSE) - "$TRUE" means the script will only download the firmware, and backup the routers configuration files, without doing a firmware update.
 
 -"$script:BackupDDNSCert"
-(VALUES: $TRUE/$FALSE) - "$TRUE" means the script will also backup the DDNS certificate of the router. (Must be using DDNS)
+-(VALUES: $TRUE/$FALSE) - "$TRUE" means the script will also backup the DDNS certificate of the router. (Must be using DDNS)
 
 -"$script:DDNSCertInstall"
-(VALUES: $TRUE/$FALSE) - "$TRUE" means the script will also install the DDNS cert to your local service of choice. See: "$script:WebService" below.
+-(VALUES: $TRUE/$FALSE) - "$TRUE" means the script will also install the DDNS cert to your local service of choice. See: "$script:WebService" below.
 
 -"$script:Model"
-Must be an extact match of one of the approved models for Merlin Firmware.
+-Must be an extact match of one of the approved models for Merlin Firmware.
 
 -"$script:IP"
-Must be the router's local IP address. (For example 192.168.2.1)
+-Must be the router's local IP address. (For example 192.168.2.1)
 
 -"$script:User"
-Must be the router's Admin username. (For example Administrator)
+-Must be the router's Admin username. (For example Administrator)
 
 -"$script:Password"
-Must be the router's Admin password.
+-Must be the router's Admin password.
 
 -"$script:DDNSDomain"
-Must be an extact match of the DDNS name if you have: "$script:BackupDDNSCert" set to: "$TRUE" (On Firmware older than 388.4 the "_ecc" value can be removed, else do not change it.)
+-Must be an extact match of the DDNS name if you have: "$script:BackupDDNSCert" set to: "$TRUE" (On Firmware older than 388.4 the "_ecc" value can be removed, else do not change it.)
 
 # Set System Values
 -"$script:downloadDir"
