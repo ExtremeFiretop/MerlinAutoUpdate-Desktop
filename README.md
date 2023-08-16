@@ -58,7 +58,7 @@ Script Setup:
 -"$script:LocalConfig"
 =Must be an extact match of the path where you need the newest router backups to be stored.
 
--"$script:nginx"
+-"$script:LocalCertPath"
 =Must be an extact match of the path where you need the DDNS certificate installed. (For example, "C:\ProgramData\nginx")
 
 -"$script:WebService"
