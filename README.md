@@ -3,6 +3,27 @@ Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
 This script allows you to remotely identify a beta or stable firmware update for an ASUS Merlin router, and automatically download and update via an unattended method.
 
+Here's a breakdown of what the script does:
+
+1. Set Router Values: This section sets various configuration values related to the router, such as its model, IP address, user credentials, and domain for DDNS.
+2. Set System Values: This section sets paths and other system-related values, such as where to download firmware, where to extract it, and the type of web service being used.
+3. Set Web Page URLs: This section sets the URLs for the beta and release firmware versions.
+4. Show Windows Toast Notification Function: This function (Show-Notification) is used to display Windows toast notifications. It takes in a title and text for the notification.
+5. Get Web Page Content: This section fetches the content of the beta and release firmware web pages.
+6. Find Firmware Links: This section parses the fetched web pages to find links to the firmware files. It then sorts these links based on the version number to determine the newest beta and release firmware versions.
+7. Determine Newest Firmware: This section compares the newest beta and release firmware versions to determine which one is the most recent.
+8. Get Local Build Info: This section retrieves information about the currently installed firmware version.
+9. Compare Firmware Versions: This section compares the newest online firmware version with the currently installed version to determine if an update is needed.
+10. Backup DDNS Certificate: If the $BackupDDNSCert variable is set to $True, this section backs up the DDNS certificate from the router to the local machine. If $DDNSCertInstall is also $True, it stops the web service, copies the certificates to the appropriate directory, and then restarts the web service.
+11. Download and Verify Firmware: This section downloads the newest firmware, verifies its checksum, and then proceeds with the update if the checksum is valid. If the checksum is not valid, it will retry the download up to a maximum number of times specified by $maxAttempts.
+12. Update Firmware: If the downloaded firmware is newer than the currently installed version, this section uploads the new firmware to the router, flashes it, and then reboots the router.
+13. Exit: If no updates are available or after the update process is complete, the script displays a notification and then exits.
+
+Important Notes:
+
+The script uses external tools like pscp.exe and ssh to interact with the router. Ensure these tools are available in the system's PATH or specify their full paths in the script.
+Before running such scripts, always backup your router's configuration and any other important data. There's always a risk of data loss or other issues when updating firmware.
+
 General Instructions:
 This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software. To use this scripts you must first have.
 
@@ -22,6 +43,8 @@ System Setup:
 Script Setup:
 1. Download the script, copy it to your desired location on your Windows 10 computer.
 2. Open the script and modify the following parameters:
+3. Run the script in Powershell to test.
+4. Link to a to task scheduler to run automatically at night, etc.
 
 # Set Router Values   
 -"$script:DownloadandBackupOnly"
@@ -66,6 +89,3 @@ Script Setup:
 
 -"$script:Browser"
 =(VALUES: ::InternetExplorer, ::Chrome, etc.) Must be a browser name installed on the system.
-
-3. Run the script in Powershell to test.
-4. Link to a to task scheduler to run automatically at night, etc.
