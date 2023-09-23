@@ -1,18 +1,22 @@
 # Set Router Values
+$script:ROGRouter = $True #Does your merlin .zip file contain a ROG version of the firmware? If so select $True, else do $False
+$script:UseROGVersion = $False #Only applicable if the above variable "$script:ROGRouter" is set to $True
 $script:DownloadandBackupOnly = $False
 $script:BackupDDNSCert = $True
 $script:DDNSCertInstall = $True
-$script:Model = "RT-AX88U"
+$script:Model = "GT-AXE11000"
 $script:IP = "192.168.1.1"
 $script:User = "Admin"
 $script:Password = "PASSWORDHERE"
-$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #On Firmware older than 388.4 the _ecc can be removed, else do not change it.
+$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #PATH IS LETTER CASE SPECIFIC (Uppercase, lowercase) AS ENTERED ON WEB GUI...
+#Note: On Firmware older than 388.4 the _ecc can be removed, else do not change it.
 
 # Set System Values
-$script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Downloaded\"
-$script:ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\RT-AX88 Firmware Release\Production\"
+$script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\GT-AXE11000 Firmware Release\Downloaded\"
+$script:ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\GT-AXE11000 Firmware Release\Production\"
 $script:LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
-$script:LocalCertPath = "C:\ProgramData\nginx"
+$script:CertDownloadPath = "$LocalConfig\SSL Cert"
+$script:CertInstallPath = "C:\ProgramData\nginx"
 $script:WebService = "NGINX"
 $script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $script:FileType = "*.w"
@@ -50,6 +54,24 @@ function Show-Notification {
     $Notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("ASUS Router Script")
     $Notifier.Show($Toast);
 }
+
+# Function to check and create directories if they don't exist
+function Ensure-DirectoryExists {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        New-Item -Path $Path -ItemType Directory
+    }
+}
+
+# Ensure directories exist
+Ensure-DirectoryExists -Path $script:downloadDir
+Ensure-DirectoryExists -Path $script:ExtractedDir
+Ensure-DirectoryExists -Path $script:LocalConfig
+Ensure-DirectoryExists -Path $script:CertDownloadPath
 
 # Get the web page content
 $htmlbeta = Invoke-WebRequest $urlbeta
@@ -173,9 +195,9 @@ $FirmwareBuildBetaNumber = ($LocalFirmwareBuild.FileName -replace '^.*_beta(\d+)
 if($BackupDDNSCert -eq $True){
 Show-Notification "Downloading DDNS Certs"
 
-& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$LocalConfig\SSL Cert" | Out-null
-& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$LocalConfig\SSL Cert" | Out-null
-& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$LocalConfig\SSL Cert" | Out-null
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" | Out-null
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" | Out-null
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" | Out-null
 
 if($DDNSCertInstall -eq $True){
 
@@ -193,8 +215,8 @@ Show-Notification "$script:WebService Stopped Temporarily"
 
 Start-Sleep -Seconds 10
 
-Copy-Item -Path "$LocalConfig\SSL Cert\Domain.key" -Destination "$script:LocalCertPath\key.pem" -Force
-Copy-Item -Path "$LocalConfig\SSL Cert\fullchain.pem" -Destination "$script:LocalCertPath\cert.pem" -Force
+Copy-Item -Path "$script:CertDownloadPath\Domain.key" -Destination "$script:CertInstallPath\key.pem" -Force
+Copy-Item -Path "$script:CertDownloadPath\fullchain.pem" -Destination "$script:CertInstallPath\cert.pem" -Force
 
 Start-Sleep -Seconds 5
 
@@ -236,7 +258,20 @@ $NewestBuildName"
         Unblock-File -Path $downloadPath
         Expand-Archive -Path $downloadPath -DestinationPath "$ExtractedDir" -Force
 
+        if ($script:ROGRouter -eq $True){
+        # Select the firmware based on the $UseROGVersion switch
+        if ($UseROGVersion) {
+        $ExtractedVersionName = Get-ChildItem -Path $ExtractedDir -Recurse -Include $FileType | 
+        Where-Object { $_.Name -like '*_rog_*' } | 
+        Select-Object -ExpandProperty FullName
+        } else {
+        $ExtractedVersionName = Get-ChildItem -Path $ExtractedDir -Recurse -Include $FileType | 
+        Where-Object { $_.Name -notlike '*_rog_*' } | 
+        Select-Object -ExpandProperty FullName }
+        }else{
         $ExtractedVersionName = (Get-ChildItem -Path $ExtractedDir -Recurse -Include $FileType | Select-Object FullName).FullName
+        }
+
         $expectedChecksum = (Get-Content "$ExtractedDir\sha256sum.sha256").Split(' ')[0]
 
         $fileName = [IO.Path]::GetFileName($ExtractedVersionName)
@@ -274,7 +309,7 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
             Show-Notification "Flashing Router Firmware"
 
             $flashresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
-            if ($flashresult -like '*Host key verification failed.*') {
+            if ($flashresult -like '*Host key verification failed.*'){
             Show-Notification "Host key verification failed.
 Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
             }
