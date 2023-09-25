@@ -393,7 +393,7 @@ if($script:UseROGVersion -eq $Null){exit}
 }
 
 # $True to only Download the Firmware and Backup Router Config. (NO FLASHING!)
-$script:DownloadBackupOnly = Get-Input -formTitle 'Flash Confirmation?' -labelText 'Would you like to skip the firmware flash?' -noteText "NOTE: Selecting 'Yes' does NOT flash the firmware! Downloads firmware and router configs only!" -inputType 'button'
+$script:DownloadBackupOnly = Get-InputUI -formTitle 'Flash Confirmation?' -labelText 'Would you like to skip the firmware flash?' -noteText "NOTE: Selecting 'Yes' does NOT flash the firmware! Downloads firmware and router configs only!" -inputType 'button'
 if($script:DownloadBackupOnly -eq $Null){exit}
 
 # $True to backup a DDNS certificate or $False if not using DDNS or don't want to back up the cert.
