@@ -438,7 +438,7 @@ if (!(Test-Path $variablesFilePath)) {
 $variablesToStore = @{
     ROGRouter             = $script:ROGRouter
     UseROGVersion         = $script:UseROGVersion
-    DownloadandBackupOnly = $script:DownloadandBackupOnly
+    DownloadBackupOnly    = $script:DownloadBackupOnly
     BackupDDNSCert        = $script:BackupDDNSCert
     Model                 = $script:Model
     IP                    = $script:IP
