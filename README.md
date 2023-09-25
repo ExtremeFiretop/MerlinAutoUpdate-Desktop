@@ -1,4 +1,4 @@
-# Automated/Automatic and Remote Asuswrt-Merlin Firmware Updates
+# Automated/Automatic and Unattended Asuswrt-Merlin Firmware Updates
 Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
 This script allows you to remotely identify a beta or stable firmware update for an ASUS Merlin router, and automatically download and update via an unattended method.
