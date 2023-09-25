@@ -354,8 +354,8 @@ function Get-InputUI {
 
 Function Get-UserInput {
 
-$selectedDir = Select-Folder
-if ($null -eq $selectedDir) {
+$script:selectedDir = Select-Folder
+if ($null -eq $script:selectedDir) {
     Write-Host "No directory selected. Exiting script."
     exit
 }
@@ -445,16 +445,12 @@ if (Test-Path $variablesFilePath) {
                 if ($null -ne $key -and $key -ne '' -and $null -ne $value -and $value -ne '') {
                     # Set the variable with the key and value
                     Set-Variable -Name "script:$key" -Value $value
-                } else {
-                    $isValid = $false
-                    break
                 }
             } else {
                 $isValid = $false
                 break
             }
         }
-        
         if (-not $isValid) {
             Remove-Item -Path $variablesFilePath -Force
             Get-UserInput
@@ -468,10 +464,10 @@ if (Test-Path $variablesFilePath) {
 }
 
 # Set System Values
-$script:downloadDir = "$selectedDir\$script:Model Firmware Release\Downloaded\"
-$script:ExtractedDir = "$selectedDir\$script:Model Firmware Release\Production\"
-$script:LocalConfig = "$selectedDir\$script:Model Router Backups\ASUS Configs"
-$script:CertDownloadPath = "$LocalConfig\SSL Cert"
+$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
+$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
+$script:LocalConfig = "$script:selectedDir\$script:Model Router Backups\ASUS Configs"
+$script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
 $script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $script:FileType = "*.w"
 
@@ -485,6 +481,7 @@ Ensure-DirectoryExists -Path $script:asusUpdateScriptDir
 if (!(Test-Path $variablesFilePath)) {
 # Create a hashtable of the variables you want to store
 $variablesToStore = @{
+    selectedDir           = $script:selectedDir
     ROGRouter             = $script:ROGRouter
     UseROGVersion         = $script:UseROGVersion
     DownloadBackupOnly    = $script:DownloadBackupOnly
