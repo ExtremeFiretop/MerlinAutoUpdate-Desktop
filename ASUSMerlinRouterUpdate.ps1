@@ -1,30 +1,110 @@
-# Set Router Values
-$script:ROGRouter = $True #Does your merlin .zip file contain a ROG version of the firmware? If so select $True, else do $False
-$script:UseROGVersion = $False #Only applicable if the above variable "$script:ROGRouter" is set to $True
-$script:DownloadandBackupOnly = $False
-$script:BackupDDNSCert = $True
-$script:DDNSCertInstall = $True
-$script:Model = "GT-AXE11000"
-$script:IP = "192.168.1.1"
-$script:User = "Admin"
-$script:Password = "PASSWORDHERE"
-$script:DDNSDomain = "DDNS-EXAMPLE.asuscomm.com" + "_ecc" #PATH IS LETTER CASE SPECIFIC (Uppercase, lowercase) AS ENTERED ON WEB GUI...
-#Note: On Firmware older than 388.4 the _ecc can be removed, else do not change it.
+Add-Type -AssemblyName System.Windows.Forms
 
-# Set System Values
-$script:downloadDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\GT-AXE11000 Firmware Release\Downloaded\"
-$script:ExtractedDir = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\GT-AXE11000 Firmware Release\Production\"
-$script:LocalConfig = "H:\USER\Downloads\Tools\Router Stuff\ASUS Router\ASUS Configs"
-$script:CertDownloadPath = "$LocalConfig\SSL Cert"
-$script:CertInstallPath = "C:\ProgramData\nginx"
-$script:WebService = "NGINX"
-$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
-$script:FileType = "*.w"
+# Ensure the script is run with elevated privileges
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Show-Notification "Please run script as Admin. 
+WinSCP could not be installed."
+    Break
+}
 
-# Set the web page urls
-$urlbeta = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Beta/"
-$urlrelease = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Release/"
+# Define the registry paths and values
+$registryPaths = @(
+    @{
+        Path  = 'HKCU:\Software\Microsoft\Internet Explorer\Main'
+        Name  = 'DisableFirstRunCustomize'
+        Value = 1
+        Type  = 'DWord'
+    },
+    @{
+        Path  = 'HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Main'
+        Name  = 'DisableFirstRunCustomize'
+        Value = 1
+        Type  = 'DWord'
+    }
+)
 
+# Loop through each registry path and modify or create the key as needed
+foreach ($registry in $registryPaths) {
+    # Check if the registry path exists
+    if (Test-Path -Path $registry.Path) {
+        # Check if the registry key exists
+        if (Get-ItemProperty -Path $registry.Path -Name $registry.Name -ErrorAction SilentlyContinue) {
+            # Get the current value of the registry key
+            $currentValue = Get-ItemPropertyValue -Path $registry.Path -Name $registry.Name -ErrorAction SilentlyContinue
+            
+            # Check if the current value is different from the desired value
+            if ($currentValue -ne $registry.Value) {
+                # Modify the registry key with the correct value
+                Set-ItemProperty -Path $registry.Path -Name $registry.Name -Value $registry.Value -Type $registry.Type -Force
+                Write-Host "Modified $($registry.Path)\$($registry.Name) to $($registry.Value)"
+            } else {
+                Write-Host "$($registry.Path)\$($registry.Name) is already set to $($registry.Value)"
+            }
+        } else {
+            # Create the registry key with the correct value if it does not exist
+            New-ItemProperty -Path $registry.Path -Name $registry.Name -Value $registry.Value -PropertyType $registry.Type -Force
+            Write-Host "Created $($registry.Path)\$($registry.Name) with value $($registry.Value)"
+        }
+    } else {
+        # Create the registry path and key with the correct value if the path does not exist
+        New-Item -Path $registry.Path -Force
+        New-ItemProperty -Path $registry.Path -Name $registry.Name -Value $registry.Value -PropertyType $registry.Type -Force
+        Write-Host "Created $($registry.Path)\$($registry.Name) with value $($registry.Value)"
+    }
+}
+
+Write-Host "Registry check and modifications have been completed."
+
+# Check if WinSCP is installed
+$winscpInstalled = (Test-Path "C:\Program Files (x86)\WinSCP\WinSCP.exe") -or (Test-Path "C:\Program Files\WinSCP\WinSCP.exe")
+
+# Check if PuTTY is installed
+$puttyInstalled = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object {$_.DisplayName -like "PuTTY*"}
+
+# Set URLs for the installers
+$winscpURL = "https://cdn.winscp.net/files/WinSCP-6.1.2-Setup.exe?secure=WVXoqiT09_nVYJmyR1W87g==,1695596306" # Please verify the URL is still valid
+$puttyURL = "https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.79-installer.msi" # Updated URL
+
+# Set download paths
+$winscpPath = "$env:TEMP\WinSCP-Setup.exe"
+$puttyPath = "$env:TEMP\putty-installer.msi"
+
+# Download and Install WinSCP if not installed
+if (-not $winscpInstalled) {
+    try {
+        Invoke-WebRequest -Uri $winscpURL -OutFile $winscpPath
+        Start-Process -Wait -FilePath $winscpPath -ArgumentList "/silent /ALLUSERS"
+        Write-Output "Installation of PuTTY completed!"
+    } catch {
+        Write-Error "Failed to download or install PuTTY. Please check the URL and try again."
+    } finally {
+        if (Test-Path $puttyPath) { Remove-Item -Path $puttyPath }
+    }
+} else {
+    Write-Output "WinSCP is already installed!"
+}
+
+# Download and Install PuTTY if not installed
+if (-not $puttyInstalled) {
+    try {
+        Invoke-WebRequest -Uri $puttyURL -OutFile $puttyPath
+        Start-Process -Wait -FilePath msiexec -ArgumentList "/i $puttyPath /qn"
+        Write-Output "Installation of PuTTY completed!"
+    } catch {
+        Write-Error "Failed to download or install PuTTY. Please check the URL and try again."
+    } finally {
+        if (Test-Path $puttyPath) { Remove-Item -Path $puttyPath }
+    }
+} else {
+    Write-Output "PuTTY is already installed!"
+}
+
+# Determine the path to the user's AppData\Local directory
+$script:appDataLocalDir = "C:\ProgramData"
+
+# Define the path to the ASUSUpdateScript folder
+$script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
+$variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
 
 # Show Windows Toast Notification Function
 function Show-Notification {
@@ -51,7 +131,7 @@ function Show-Notification {
     $Toast.Tag = "ASUS Router Script"
     $Toast.Group = "ASUS Router Script"
 
-    $Notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("ASUS Router Script")
+    $Notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Merlin Auto Update Script")
     $Notifier.Show($Toast);
 }
 
@@ -63,15 +143,412 @@ function Ensure-DirectoryExists {
     )
 
     if (-not (Test-Path $Path)) {
-        New-Item -Path $Path -ItemType Directory
+        New-Item -Path $Path -ItemType Directory | Out-Null
     }
 }
+
+    function StartAndMaximizeSSHKeyGen {
+    # Start the ssh-keygen process and get the Process object
+    $Process = Start-Process "cmd.exe" -ArgumentList "/c ssh-keygen" -WindowStyle Normal -PassThru
+    
+    # Wait for a moment to ensure the process has started and the window is created
+    Start-Sleep -Seconds 2
+    
+    # Check if the process is running
+    if ($Process -ne $null) {
+        [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.VisualBasic")
+        
+        # Get the Process ID of the started process
+        $ProcessId = $Process.Id
+        
+        # Activate the window
+        [Microsoft.VisualBasic.Interaction]::AppActivate($ProcessId)
+        
+        # Define the ShowWindow function
+        $SW_MAXIMIZE = 3
+        $sig = @'
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+        Add-Type -MemberDefinition $sig -Name Functions -Namespace Win32
+        
+        # Get the MainWindowHandle of the process and maximize the window
+        $hWnd = (Get-Process -Id $ProcessId).MainWindowHandle
+        [Win32.Functions]::ShowWindow($hWnd, $SW_MAXIMIZE)
+    } else {
+        Write-Host "The ssh-keygen process did not start successfully."
+    }
+}
+
+function Select-Folder {
+    # Get the user's Downloads folder path
+    $shell = New-Object -ComObject Shell.Application
+    $downloadsPath = $shell.NameSpace('shell:Downloads').Self.Path
+   
+    # Create a new form
+    $form = New-Object System.Windows.Forms.Form
+    $form.WindowState = [System.Windows.Forms.FormWindowState]::Minimized
+    $form.ShowInTaskbar = $false
+    
+    # Create FolderBrowserDialog
+    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowser.Description = "Select a directory for downloading and extracting firmware"
+    $folderBrowser.RootFolder = [Environment+SpecialFolder]::Desktop
+    $folderBrowser.SelectedPath = $downloadsPath  # Set the default folder to the user's Downloads folder
+    $folderBrowser.ShowNewFolderButton = $true
+    
+    # Show the form
+    $form.Show()
+    $form.Focus() | Out-Null
+    $form.Activate()
+    
+    # Show FolderBrowserDialog from the form
+    $dialogResult = $folderBrowser.ShowDialog($form)
+    
+    # Close the dummy form
+    $form.Close()
+    
+    if ($dialogResult -eq [System.Windows.Forms.DialogResult]::OK) {
+        return $folderBrowser.SelectedPath
+    } else {
+        return $null
+    }
+}
+
+function Select-WebCertPath {
+    # Create a new form
+    $form = New-Object System.Windows.Forms.Form
+    $form.WindowState = [System.Windows.Forms.FormWindowState]::Minimized
+    $form.ShowInTaskbar = $false
+    
+    # Create FolderBrowserDialog
+    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowser.Description = "Select the directory for installing the DDNS web certificate"
+    $folderBrowser.RootFolder = [Environment+SpecialFolder]::Desktop
+    $folderBrowser.ShowNewFolderButton = $true
+    
+    # Show the form
+    $form.Show()
+    $form.Focus() | Out-Null
+    $form.Activate()
+    
+    # Show FolderBrowserDialog from the form
+    $dialogResult = $folderBrowser.ShowDialog($form)
+    
+    # Close the dummy form
+    $form.Close()
+    
+    if ($dialogResult -eq [System.Windows.Forms.DialogResult]::OK) {
+        return $folderBrowser.SelectedPath
+    } else {
+        return $null
+    }
+}
+
+function Get-Input {
+    param (
+        [string]$formTitle,
+        [string]$labelText,
+        [string]$noteText,
+        [string]$linkText,
+        [string]$linkUrl,
+        [bool]$isPassword = $false,
+        [string]$inputType = 'text', # Default to text input
+        [string]$yesButtonText = 'Yes',
+        [string]$noButtonText = 'No'
+    )
+
+    # Create the main form
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = $formTitle
+    $form.Size = New-Object System.Drawing.Size(350, 180)
+    $form.StartPosition = 'CenterScreen'
+    $form.TopMost = $true
+
+    # Create label
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(10, 20)
+    $label.Size = New-Object System.Drawing.Size(320, 20)
+    $label.Text = $labelText
+    $form.Controls.Add($label)
+
+    # Create note label if provided
+    if ($noteText) {
+        $label2 = New-Object System.Windows.Forms.Label
+        $label2.Location = New-Object System.Drawing.Point(10, 40)
+        $label2.Size = New-Object System.Drawing.Size(320, 40)
+        $label2.Text = $noteText
+        $form.Controls.Add($label2)
+    }
+
+    # Create LinkLabel if provided
+    if ($linkText -and $linkUrl) {
+        $linkLabel = New-Object System.Windows.Forms.LinkLabel
+        $linkLabel.Location = New-Object System.Drawing.Point(190, 20)
+        $linkLabel.Size = New-Object System.Drawing.Size(100, 20)
+        $linkLabel.Text = $linkText
+        $form.Controls.Add($linkLabel)
+        $linkLabel.BringToFront()
+        $linkLabel.Add_LinkClicked({ Start-Process $linkUrl })
+    }
+
+    if ($inputType -eq 'text') {
+        # Create textbox for input
+        $textBox = New-Object System.Windows.Forms.TextBox
+        $textBox.Location = New-Object System.Drawing.Point(10, 80)
+        $textBox.Size = New-Object System.Drawing.Size(310, 20)
+        if ($isPassword) { $textBox.UseSystemPasswordChar = $true }
+        $form.Controls.Add($textBox)
+
+        # Create OK button
+        $okButton = New-Object System.Windows.Forms.Button
+        $okButton.Location = New-Object System.Drawing.Point(120, 110)
+        $okButton.Size = New-Object System.Drawing.Size(75, 23)
+        $okButton.Text = 'OK'
+        $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $form.Controls.Add($okButton)
+
+        # Set the accept button for the form
+        $form.AcceptButton = $okButton
+    } else {
+        # Create No button
+        $noButton = New-Object System.Windows.Forms.Button
+        $noButton.Location = New-Object System.Drawing.Point(200, 80)
+        $noButton.Size = New-Object System.Drawing.Size(75, 23)
+        $noButton.Text = $noButtonText
+        $noButton.DialogResult = [System.Windows.Forms.DialogResult]::No
+        $form.Controls.Add($noButton)
+
+        # Create Yes button
+        $yesButton = New-Object System.Windows.Forms.Button
+        $yesButton.Location = New-Object System.Drawing.Point(50, 80)
+        $yesButton.Size = New-Object System.Drawing.Size(75, 23)
+        $yesButton.Text = $yesButtonText
+        $yesButton.DialogResult = [System.Windows.Forms.DialogResult]::Yes
+        $form.Controls.Add($yesButton)
+
+        # Set the accept and cancel button for the form
+        $form.AcceptButton = $yesButton
+        $form.CancelButton = $noButton
+    }
+
+    # Show the form and get the result
+    $result = $form.ShowDialog()
+
+    if ($inputType -eq 'text') {
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            return $textBox.Text
+        } else {
+            return $null
+        }
+    } else {
+        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+            return $true
+        } else {
+            return $false
+        }
+    }
+}
+
+if (Test-Path $variablesFilePath) {
+    Get-Content -Path $variablesFilePath | ForEach-Object {
+        $key, $value = $_ -split '='
+        Set-Variable -Name "script:$key" -Value $value
+    }
+}
+else{
+$selectedDir = Select-Folder
+if ($null -eq $selectedDir) {
+    Write-Host "No directory selected. Exiting script."
+    exit
+}
+
+# Set Router Values
+
+# Extact model as listed here: https://sourceforge.net/projects/asuswrt-merlin/files/
+#NOTE: MODEL IS LETTER CASE SPECIFIC (Uppercase, lowercase)
+$script:Model = Get-Input -formTitle 'Enter Router Model' -labelText 'Enter Router Model (As found on:' -noteText 'NOTE: Upper and lower case specific!' -linkText 'SourceForge)' -linkUrl 'https://sourceforge.net/projects/asuswrt-merlin/files/'
+
+# IP Address of router
+$script:IP = Get-Input -formTitle 'Enter Router IP Address' -labelText 'Enter the Routers IP Address:'
+
+# Username of router
+#NOTE: USER IS LETTER CASE SPECIFIC (Uppercase, lowercase)
+$script:User = Get-Input -formTitle 'Enter Router User' -labelText 'Enter the Routers Username:' -noteText 'NOTE: Upper and lower case specific!'
+
+# Password of router
+#NOTE: PASSWORD IS LETTER CASE SPECIFIC (Uppercase, lowercase)
+$script:Password = Get-Input -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
+
+# $True or $False does the Merlin .zip file contain a ROG build of the firmware?
+$script:ROGRouter = Get-Input -formTitle 'ROG Build Confirmation' -labelText 'Does your firmware.zip usually contain a ROG build?' -inputType 'button'
+
+if($script:ROGRouter -eq $True){
+# $True or $False to use ROG build. 
+# NOTE: Only applicable if the above variable "$script:ROGRouter" is set to $True.
+$script:UseROGVersion = Get-Input -formTitle 'ROG Build Confirmation' -labelText 'Would you like to use the ROG build or Pure Build?' -inputType 'button' -yesButtonText 'ROG Build' -noButtonText 'Pure Build'
+}
+
+# $True to only Download the Firmware and Backup Router Config. (NO FLASHING!)
+$script:DownloadBackupOnly = Get-Input -formTitle 'Flash Confirmation?' -labelText 'Would you like to skip the firmware flash?' -noteText "NOTE: Selecting 'Yes' does NOT flash the firmware! Downloads firmware and router configs only!" -inputType 'button'
+
+# $True to backup a DDNS certificate or $False if not using DDNS or don't want to back up the cert.
+$script:BackupDDNSCert = Get-Input -formTitle 'Backup DDNS Cert?' -labelText 'Would you like to download and backup the DDNS certificate?' -noteText "NOTE: Select 'Yes' to backup a DDNS certificate or 'No' if not using DDNS or don't want to back up the cert." -inputType 'button'
+
+#NOTE 1: applicable if the above variable "$script:BackupDDNSCert" is set to $True.
+#NOTE 2: PATH IS LETTER CASE SPECIFIC (Uppercase, lowercase) AS ENTERED ON WEB GUI UNDER.... WAN --> DDNS.
+if ($script:BackupDDNSCert -eq $True){
+$script:DDNSDomain = Get-Input -formTitle 'Enter DDNS Domain' -labelText 'Enter the Routers DDNS Address:' -noteText 'NOTE: Upper and lower case specific as found in the Web UI under WAN --> DDNS!'
+$script:DDNSDomain = $script:DDNSDomain + "_ecc"
+
+#$True to install DDNS certificate on local PC. (such as nginx, apache, etc)
+$script:DDNSCertInstall = Get-Input -formTitle 'Install DDNS Certificate?' -labelText 'Install DDNS certificate on this computer for web service?' -noteText "NOTE: Only for if you have a web service such as apache or nginx" -inputType 'button'
+
+
+if($script:DDNSCertInstall -eq $True){
+#$Enter web Service name (such as nginx, apache, etc)
+$script:WebService = Get-Input -formTitle 'Enter Web Service Name' -labelText 'Enter the name web service to install:' -noteText 'NOTE: Examples include apache, nginx, etc. Name much be entered as found in services.msc'
+
+#$Path where to install the DDNS certificate
+$script:CertInstallPath = Select-WebCertPath
+if ($null -eq $script:CertInstallPath) {
+    Write-Host "No answer entered. Exiting script."
+    exit
+}
+}
+}
+}
+
+# Set System Values
+$script:downloadDir = "$selectedDir\$script:Model Firmware Release\Downloaded\"
+$script:ExtractedDir = "$selectedDir\$script:Model Firmware Release\Production\"
+$script:LocalConfig = "$selectedDir\$script:Model Router Backups\ASUS Configs"
+$script:CertDownloadPath = "$LocalConfig\SSL Cert"
+$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
+$script:FileType = "*.w"
 
 # Ensure directories exist
 Ensure-DirectoryExists -Path $script:downloadDir
 Ensure-DirectoryExists -Path $script:ExtractedDir
 Ensure-DirectoryExists -Path $script:LocalConfig
 Ensure-DirectoryExists -Path $script:CertDownloadPath
+Ensure-DirectoryExists -Path $script:asusUpdateScriptDir
+
+if (!(Test-Path $variablesFilePath)) {
+# Create a hashtable of the variables you want to store
+$variablesToStore = @{
+    ROGRouter             = $script:ROGRouter
+    UseROGVersion         = $script:UseROGVersion
+    DownloadandBackupOnly = $script:DownloadandBackupOnly
+    BackupDDNSCert        = $script:BackupDDNSCert
+    Model                 = $script:Model
+    IP                    = $script:IP
+    User                  = $script:User
+    Password              = $script:Password
+    DDNSDomain            = $script:DDNSDomain
+    DDNSCertInstall       = $script:DDNSCertInstall
+    CertInstallPath       = $script:CertInstallPath
+    WebService            = $script:WebService
+}
+
+# Convert the hashtable to a multi-line string and save it to the .txt file
+$variablesToStoreString = $variablesToStore.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+$variablesToStoreString | Out-File $variablesFilePath -Encoding UTF8
+}
+
+# Determine the path to the user's AppData\Local directory
+$script:appDataLocalDir = "C:\ProgramData"
+
+# Define the path to the ASUSUpdateScript folder
+$script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
+$variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
+
+
+# Define the path to the ssh key
+$localusername = $env:USERNAME
+$sshKeyPath = "C:\Users\$localusername\.ssh\id_rsa.pub"
+$vbsScriptPath = Join-Path $script:asusUpdateScriptDir "SendKeys.vbs"
+
+# Initialize a flag to check if the ssh key is generated
+$keyGenerated = $false
+
+# Check if the ssh key exists
+if (-Not (Test-Path -Path $sshKeyPath)) {
+    # If it doesn't exist, create the VBScript file dynamically
+    $vbsContent = @"
+set WshShell = WScript.CreateObject("WScript.Shell")
+WScript.Sleep 500
+WshShell.SendKeys "{ENTER}"
+WScript.Sleep 500
+WshShell.SendKeys "{ENTER}"
+WScript.Sleep 500
+WshShell.SendKeys "{ENTER}"
+WScript.Sleep 500
+WshShell.SendKeys "{ENTER}"
+"@
+    Set-Content -Path $vbsScriptPath -Value $vbsContent
+
+    # Call the function
+    StartAndMaximizeSSHKeyGen | Out-Null
+
+    # Wait for a few seconds to allow ssh-keygen to complete
+    Start-Sleep -Seconds 1
+    
+    # Run the VBScript to send Enter keystrokes to the ssh-keygen process
+    Start-Process "wscript.exe" -ArgumentList $vbsScriptPath
+    
+    # Wait for a few seconds to allow ssh-keygen to complete
+    Start-Sleep -Seconds 5
+    
+    # Double check if the ssh key is generated
+    if (-Not (Test-Path -Path $sshKeyPath)) {
+        Write-Host "Failed to generate SSH key." -ForegroundColor Red
+        exit 1
+    }
+    
+    # Set the flag to true as the key is generated
+    $keyGenerated = $true
+}
+
+# If the key was generated, display the form with the TextBox
+if ($keyGenerated) {
+    # Read the contents of the ssh key
+    $sshKeyContent = Get-Content -Path $sshKeyPath -Raw
+    
+    # Create a form with a Label for instructions and a TextBox for the ssh key
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "SSH Key"
+    $form.Size = New-Object System.Drawing.Size(800,410)
+    $form.StartPosition = "CenterScreen"
+    
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(10,10)
+    $label.Size = New-Object System.Drawing.Size(760,40)
+    $label.Text = "Paste this SSH key into the router Admin console under:`r`nAdministration -> System -> Authorized Keys"
+    $form.Controls.Add($label)
+    
+    $textBox = New-Object System.Windows.Forms.TextBox
+    $textBox.Location = New-Object System.Drawing.Point(10,60)
+    $textBox.Size = New-Object System.Drawing.Size(760,270)
+    $textBox.Multiline = $true
+    $textBox.Text = $sshKeyContent
+    $textBox.ScrollBars = "Vertical"
+    $textBox.ReadOnly = $true  # Set the TextBox to read-only
+    $form.Controls.Add($textBox)
+    
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(650,340)
+    $okButton.Size = New-Object System.Drawing.Size(75,23)
+    $okButton.Text = "OK"
+    $okButton.Add_Click({ $form.Close() })
+    $form.Controls.Add($okButton)
+    
+    $form.ShowDialog()
+}
+
+# Set the web page urls
+$urlbeta = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Beta/"
+$urlrelease = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Release/"
 
 # Get the web page content
 $htmlbeta = Invoke-WebRequest $urlbeta
@@ -195,9 +672,16 @@ $FirmwareBuildBetaNumber = ($LocalFirmwareBuild.FileName -replace '^.*_beta(\d+)
 if($BackupDDNSCert -eq $True){
 Show-Notification "Downloading DDNS Certs"
 
+try {
+ $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" | Out-null
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" | Out-null
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" | Out-null
+} catch {
+    Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+}finally {
+    $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+}
 
 if($DDNSCertInstall -eq $True){
 
@@ -272,7 +756,7 @@ $NewestBuildName"
         $ExtractedVersionName = (Get-ChildItem -Path $ExtractedDir -Recurse -Include $FileType | Select-Object FullName).FullName
         }
 
-        $expectedChecksum = (Get-Content "$ExtractedDir\sha256sum.sha256").Split(' ')[0]
+        $expectedChecksums = Get-Content "$ExtractedDir\sha256sum.sha256" | ForEach-Object { $_.Split(' ')[0] }
 
         $fileName = [IO.Path]::GetFileName($ExtractedVersionName)
 
@@ -280,13 +764,13 @@ $NewestBuildName"
         $actualChecksum = (Get-FileHash $ExtractedVersionName -Algorithm SHA256).Hash
 
         # Compare the expected and actual checksum values using a conditional statement
-        if ($actualChecksum -eq $expectedChecksum) {
+        if ($actualChecksum -in $expectedChecksums) {
             $validChecksum = $true
             $BuildName = ($NewestBuildName -replace '\.zip$', '').TrimEnd('.')
 
             Show-Notification "Downloading Router Backups"
 
-            $configbackupresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            $configbackupresult = ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
             if ($configbackupresult -like '*Host key verification failed.*') {
             Show-Notification "Host key verification failed.
 Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
@@ -294,7 +778,14 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
 
             Start-Sleep -Seconds 1
 
+            try {
+            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
             & pscp.exe -scp -pw "$Password" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" | Out-null
+            } catch {
+            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            }finally {
+            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+            }
 
             Start-Sleep -Seconds 5
 
@@ -302,23 +793,30 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
 
             Show-Notification "Uploading Router Firmware"
 
+            try {
+            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
             & pscp.exe -scp -pw "$Password" "$ExtractedVersionName" "${User}@${IP}:/home/root" | Out-null
+            } catch {
+            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            }finally {
+            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+            }
 
             Start-Sleep -Seconds 5
 
             Show-Notification "Flashing Router Firmware"
 
-            $flashresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            $flashresult = ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
             if ($flashresult -like '*Host key verification failed.*'){
             Show-Notification "Host key verification failed.
 Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
             }
 
-            Start-Sleep -Seconds 65
+            Start-Sleep -Seconds 120
 
             Show-Notification "Rebooting Router"
 
-            $rebootresult = ssh -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+            $rebootresult = ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
             if ($rebootresult -like '*Host key verification failed.*') {
             Show-Notification "Host key verification failed.
 Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
