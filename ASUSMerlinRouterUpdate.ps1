@@ -90,7 +90,7 @@ $winscpInstalled = (Test-Path "C:\Program Files (x86)\WinSCP\WinSCP.exe") -or (T
 $puttyInstalled = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object {$_.DisplayName -like "PuTTY*"}
 
 # Set URLs for the installers
-$winscpURL = "https://cdn.winscp.net/files/WinSCP-6.1.2-Setup.exe?secure=WVXoqiT09_nVYJmyR1W87g==,1695596306" # Please verify the URL is still valid
+$winscpURL = "https://files1.majorgeeks.com/10afebdbffcd4742c81a3cb0f6ce4092156b4375/internet/WinSCP-6.1.2-Setup.exe" # Please verify the URL is still valid
 $puttyURL = "https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.79-installer.msi" # Updated URL
 
 # Set download paths
@@ -102,15 +102,17 @@ if (-not $winscpInstalled) {
     try {
         Invoke-WebRequest -Uri $winscpURL -OutFile $winscpPath
         Start-Process -Wait -FilePath $winscpPath -ArgumentList "/silent /ALLUSERS"
-        Write-Output "Installation of PuTTY completed!"
+        Write-Output "Installation of WinSCP completed!" # Corrected message
     } catch {
-        Write-Error "Failed to download or install PuTTY. Please check the URL and try again."
+        Write-Error "Failed to download or install WinSCP. Please check the URL and try again."
+        exit
     } finally {
         if (Test-Path $winscpPath) { Remove-Item -Path $winscpPath }
     }
 } else {
     Write-Output "WinSCP is already installed!"
 }
+
 
 # Download and Install PuTTY if not installed
 if (-not $puttyInstalled) {
@@ -120,6 +122,7 @@ if (-not $puttyInstalled) {
         Write-Output "Installation of PuTTY completed!"
     } catch {
         Write-Error "Failed to download or install PuTTY. Please check the URL and try again."
+        exit
     } finally {
         if (Test-Path $puttyPath) { Remove-Item -Path $puttyPath }
     }
@@ -244,7 +247,7 @@ function Select-WebCertPath {
     }
 }
 
-function Get-Input {
+function Get-InputUI {
     param (
         [string]$formTitle,
         [string]$labelText,
@@ -349,13 +352,8 @@ function Get-Input {
     }
 }
 
-if (Test-Path $variablesFilePath) {
-    Get-Content -Path $variablesFilePath | ForEach-Object {
-        $key, $value = $_ -split '='
-        Set-Variable -Name "script:$key" -Value $value
-    }
-}
-else{
+Function Get-UserInput {
+
 $selectedDir = Select-Folder
 if ($null -eq $selectedDir) {
     Write-Host "No directory selected. Exiting script."
@@ -366,47 +364,57 @@ if ($null -eq $selectedDir) {
 
 # Extact model as listed here: https://sourceforge.net/projects/asuswrt-merlin/files/
 #NOTE: MODEL IS LETTER CASE SPECIFIC (Uppercase, lowercase)
-$script:Model = Get-Input -formTitle 'Enter Router Model' -labelText 'Enter Router Model (As found on:' -noteText 'NOTE: Upper and lower case specific!' -linkText 'SourceForge)' -linkUrl 'https://sourceforge.net/projects/asuswrt-merlin/files/'
+$script:Model = Get-InputUI -formTitle 'Enter Router Model' -labelText 'Enter Router Model (As found on:' -noteText 'NOTE: Upper and lower case specific!' -linkText 'SourceForge)' -linkUrl 'https://sourceforge.net/projects/asuswrt-merlin/files/'
+if($script:Model -eq $Null){exit}
 
 # IP Address of router
-$script:IP = Get-Input -formTitle 'Enter Router IP Address' -labelText 'Enter the Routers IP Address:'
+$script:IP = Get-InputUI -formTitle 'Enter Router IP Address' -labelText 'Enter the Routers IP Address:'
+if($script:IP -eq $Null){exit}
 
 # Username of router
 #NOTE: USER IS LETTER CASE SPECIFIC (Uppercase, lowercase)
-$script:User = Get-Input -formTitle 'Enter Router User' -labelText 'Enter the Routers Username:' -noteText 'NOTE: Upper and lower case specific!'
+$script:User = Get-InputUI -formTitle 'Enter Router User' -labelText 'Enter the Routers Username:' -noteText 'NOTE: Upper and lower case specific!'
+if($script:User -eq $Null){exit}
 
 # Password of router
 #NOTE: PASSWORD IS LETTER CASE SPECIFIC (Uppercase, lowercase)
-$script:Password = Get-Input -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
+$script:Password = Get-InputUI -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
+if($script:Password -eq $Null){exit}
 
 # $True or $False does the Merlin .zip file contain a ROG build of the firmware?
-$script:ROGRouter = Get-Input -formTitle 'ROG Build Confirmation' -labelText 'Does your firmware.zip usually contain a ROG build?' -inputType 'button'
+$script:ROGRouter = Get-InputUI -formTitle 'ROG Build Confirmation' -labelText 'Does your firmware.zip usually contain a ROG build?' -inputType 'button'
+if($script:ROGRouter -eq $Null){exit}
 
 if($script:ROGRouter -eq $True){
 # $True or $False to use ROG build. 
 # NOTE: Only applicable if the above variable "$script:ROGRouter" is set to $True.
-$script:UseROGVersion = Get-Input -formTitle 'ROG Build Confirmation' -labelText 'Would you like to use the ROG build or Pure Build?' -inputType 'button' -yesButtonText 'ROG Build' -noButtonText 'Pure Build'
+$script:UseROGVersion = Get-InputUI -formTitle 'ROG Build Confirmation' -labelText 'Would you like to use the ROG build or Pure Build?' -inputType 'button' -yesButtonText 'ROG Build' -noButtonText 'Pure Build'
+if($script:UseROGVersion -eq $Null){exit}
 }
 
 # $True to only Download the Firmware and Backup Router Config. (NO FLASHING!)
 $script:DownloadBackupOnly = Get-Input -formTitle 'Flash Confirmation?' -labelText 'Would you like to skip the firmware flash?' -noteText "NOTE: Selecting 'Yes' does NOT flash the firmware! Downloads firmware and router configs only!" -inputType 'button'
+if($script:DownloadBackupOnly -eq $Null){exit}
 
 # $True to backup a DDNS certificate or $False if not using DDNS or don't want to back up the cert.
-$script:BackupDDNSCert = Get-Input -formTitle 'Backup DDNS Cert?' -labelText 'Would you like to download and backup the DDNS certificate?' -noteText "NOTE: Select 'Yes' to backup a DDNS certificate or 'No' if not using DDNS or don't want to back up the cert." -inputType 'button'
+$script:BackupDDNSCert = Get-InputUI -formTitle 'Backup DDNS Cert?' -labelText 'Would you like to download and backup the DDNS certificate?' -noteText "NOTE: Select 'Yes' to backup a DDNS certificate or 'No' if not using DDNS or don't want to back up the cert." -inputType 'button'
+if($script:BackupDDNSCert -eq $Null){exit}
 
 #NOTE 1: applicable if the above variable "$script:BackupDDNSCert" is set to $True.
 #NOTE 2: PATH IS LETTER CASE SPECIFIC (Uppercase, lowercase) AS ENTERED ON WEB GUI UNDER.... WAN --> DDNS.
 if ($script:BackupDDNSCert -eq $True){
-$script:DDNSDomain = Get-Input -formTitle 'Enter DDNS Domain' -labelText 'Enter the Routers DDNS Address:' -noteText 'NOTE: Upper and lower case specific as found in the Web UI under WAN --> DDNS!'
+$script:DDNSDomain = Get-InputUI -formTitle 'Enter DDNS Domain' -labelText 'Enter the Routers DDNS Address:' -noteText 'NOTE: Upper and lower case specific as found in the Web UI under WAN --> DDNS!'
+if($script:DDNSDomain -eq $Null){exit}
 $script:DDNSDomain = $script:DDNSDomain + "_ecc"
 
 #$True to install DDNS certificate on local PC. (such as nginx, apache, etc)
-$script:DDNSCertInstall = Get-Input -formTitle 'Install DDNS Certificate?' -labelText 'Install DDNS certificate on this computer for web service?' -noteText "NOTE: Only for if you have a web service such as apache or nginx" -inputType 'button'
-
+$script:DDNSCertInstall = Get-InputUI -formTitle 'Install DDNS Certificate?' -labelText 'Install DDNS certificate on this computer for web service?' -noteText "NOTE: Only for if you have a web service such as apache or nginx" -inputType 'button'
+if($script:DDNSCertInstall -eq $Null){exit}
 
 if($script:DDNSCertInstall -eq $True){
 #$Enter web Service name (such as nginx, apache, etc)
-$script:WebService = Get-Input -formTitle 'Enter Web Service Name' -labelText 'Enter the name web service to install:' -noteText 'NOTE: Examples include apache, nginx, etc. Name much be entered as found in services.msc'
+$script:WebService = Get-InputUI -formTitle 'Enter Web Service Name' -labelText 'Enter the name web service to install:' -noteText 'NOTE: Examples include apache, nginx, etc. Name much be entered as found in services.msc'
+if($script:WebService -eq $Null){exit}
 
 #$Path where to install the DDNS certificate
 $script:CertInstallPath = Select-WebCertPath
@@ -416,6 +424,47 @@ if ($null -eq $script:CertInstallPath) {
 }
 }
 }
+}
+
+#Check if the file exists
+if (Test-Path $variablesFilePath) {
+    # Read the content of the file
+    $content = Get-Content -Path $variablesFilePath
+    
+    # Check if the content is not null or empty
+    if ($null -ne $content -and $content -ne '') {
+        $isValid = $true
+        # Iterate over each line in the content
+        foreach ($line in $content) {
+            # Check if the line contains an '=' character, indicating a key-value pair
+            if ($line -match '=') {
+                # Split the line into key and value
+                $key, $value = $line -split '='
+                
+                # Check if both key and value are not null or empty
+                if ($null -ne $key -and $key -ne '' -and $null -ne $value -and $value -ne '') {
+                    # Set the variable with the key and value
+                    Set-Variable -Name "script:$key" -Value $value
+                } else {
+                    $isValid = $false
+                    break
+                }
+            } else {
+                $isValid = $false
+                break
+            }
+        }
+        
+        if (-not $isValid) {
+            Remove-Item -Path $variablesFilePath -Force
+            Get-UserInput
+        }
+    } else {
+        Remove-Item -Path $variablesFilePath -Force
+        Get-UserInput
+    }
+} else {
+    Get-UserInput
 }
 
 # Set System Values
@@ -476,8 +525,6 @@ if (-Not (Test-Path -Path $sshKeyPath)) {
     # If it doesn't exist, create the VBScript file dynamically
     $vbsContent = @"
 set WshShell = WScript.CreateObject("WScript.Shell")
-WScript.Sleep 500
-WshShell.SendKeys "{ENTER}"
 WScript.Sleep 500
 WshShell.SendKeys "{ENTER}"
 WScript.Sleep 500
