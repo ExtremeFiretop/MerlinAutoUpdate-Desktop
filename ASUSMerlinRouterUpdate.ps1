@@ -106,7 +106,7 @@ if (-not $winscpInstalled) {
     } catch {
         Write-Error "Failed to download or install PuTTY. Please check the URL and try again."
     } finally {
-        if (Test-Path $puttyPath) { Remove-Item -Path $puttyPath }
+        if (Test-Path $winscpPath) { Remove-Item -Path $winscpPath }
     }
 } else {
     Write-Output "WinSCP is already installed!"
@@ -788,7 +788,7 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
 
             Start-Sleep -Seconds 5
 
-            if($DownloadandBackupOnly -eq $False){
+            if($Script:DownloadBackupOnly -eq $False){
 
             Show-Notification "Uploading Router Firmware"
 
