@@ -30,10 +30,10 @@ function Show-Notification {
 }
 
 # Ensure the script is run with elevated privileges
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Show-Notification "Please run script as Admin."
-    Break
-}
+#if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+#    Show-Notification "Please run script as Admin."
+#    Break
+#}
 
 # Define the registry paths and values
 $registryPaths = @(
@@ -430,14 +430,6 @@ if ($null -eq $script:CertInstallPath) {
 }
 }
 
-# Set System Values
-$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
-$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
-$script:LocalConfig = "$script:selectedDir\$script:Model Router Backups\ASUS Configs"
-$script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
-$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
-$script:FileType = "*.w"
-
 Function Get-NetAdapter {
 # Get the list of network adapters
 $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -559,6 +551,15 @@ if (Test-Path $variablesFilePath) {
     Get-UserInput
 }
 
+# Set System Values
+$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
+$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
+$script:LocalConfig = "$script:selectedDir\$script:Model Router Backups\ASUS Configs"
+$script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
+$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
+$script:FileType = "*.w"
+$script:appDataLocalDir = "C:\ProgramData"
+
 # Ensure directories exist
 Ensure-DirectoryExists -Path $script:downloadDir
 Ensure-DirectoryExists -Path $script:ExtractedDir
@@ -590,13 +591,9 @@ $variablesToStoreString = $variablesToStore.GetEnumerator() | ForEach-Object { "
 $variablesToStoreString | Out-File $variablesFilePath -Encoding UTF8
 }
 
-# Determine the path to the user's AppData\Local directory
-$script:appDataLocalDir = "C:\ProgramData"
-
 # Define the path to the ASUSUpdateScript folder
 $script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
 $variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
-
 
 # Define the path to the ssh key
 $localusername = $env:USERNAME
