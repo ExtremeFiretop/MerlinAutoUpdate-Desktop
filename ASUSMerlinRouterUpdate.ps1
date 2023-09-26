@@ -382,6 +382,10 @@ $script:Password = Get-InputUI -formTitle 'Enter Router Password' -labelText 'En
 if($script:Password -eq $Null){exit}
 
 # $True or $False does the Merlin .zip file contain a ROG build of the firmware?
+$script:UseBetaBuilds = Get-InputUI -formTitle 'Include Beta Builds?' -labelText 'Would you like to include beta builds?' -inputType 'button'
+if($script:UseBetaBuilds -eq $Null){exit}
+
+# $True or $False does the Merlin .zip file contain a ROG build of the firmware?
 $script:ROGRouter = Get-InputUI -formTitle 'ROG Build Confirmation' -labelText 'Does your firmware.zip usually contain a ROG build?' -inputType 'button'
 if($script:ROGRouter -eq $Null){exit}
 
@@ -423,6 +427,53 @@ if ($null -eq $script:CertInstallPath) {
     exit
 }
 }
+}
+}
+
+Function Get-NetAdapter {
+# Get the list of network adapters
+$adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
+
+# If there are no active adapters, exit the script
+if ($adapters.Count -eq 0) {
+    Show-Notification "No active network adapter found."
+    exit
+}
+
+# If there are multiple active adapters, let the user choose one
+if ($adapters.Count -gt 1) {
+    Write-Host "Multiple active network adapters found. Please choose one:"
+    $adapters | Format-Table -Property Name, InterfaceDescription, Status
+    $adapterName = Read-Host "Enter the name of the adapter you want to monitor"
+    $adapter = $adapters | Where-Object { $_.Name -eq $adapterName }
+} else {
+    $adapter = $adapters[0]
+}
+
+# Display the name of the active adapter being monitored
+Show-Notification "Connected being monitored is: $($adapter.Name)"
+ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+
+# Monitor the adapter for disconnection and reconnection
+while ($true) {
+    # Check the status of the adapter
+    $status = (Get-NetAdapter -Name $adapter.Name).Status
+    
+    # If the adapter is disconnected, wait for it to reconnect
+    if ($status -eq 'Disconnected') {
+        Show-Notification "Adapter $($adapter.Name) is disconnected. Waiting for it to reconnect..."
+        
+        # Wait for the adapter to reconnect
+        while ((Get-NetAdapter -Name $adapter.Name).Status -eq 'Disconnected') {
+            Start-Sleep -Seconds 5
+        }
+        
+        Write-Host "Connection to $($adapter.Name) restored"
+        break
+    }
+    
+    # Sleep for a while before checking the status again
+    Start-Sleep -Seconds 5
 }
 }
 
@@ -597,6 +648,7 @@ $urlrelease = "https://sourceforge.net/projects/asuswrt-merlin/files/$Model/Rele
 $htmlbeta = Invoke-WebRequest $urlbeta
 $htmlrelease = Invoke-WebRequest $urlrelease
 
+if ($script:UseBetaBuilds -eq $True){
 # Find all the beta links on the page, and filter for those that were the newest beta build
 $NewLinksBeta = $htmlbeta.Links | Where-Object {
     $_.innerText -match "$Model_[\d\.]+_.*\.zip" -and $_.innerText -match "beta"
@@ -605,6 +657,7 @@ $NewLinksBeta = $htmlbeta.Links | Where-Object {
     $versionComponents = $version -split '\.'
     $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
 } | Sort-Object ParsedVersion -Descending
+}
 
 # Find all the production links on the page and filter for those that were the newest production build.
 $NewLinksRelease = $htmlrelease.Links | Where-Object {
@@ -615,8 +668,10 @@ $NewLinksRelease = $htmlrelease.Links | Where-Object {
     $_ | Add-Member -MemberType NoteProperty -Name 'ParsedVersion' -Value ([version]::new($versionComponents[0], $versionComponents[1], $versionComponents[2])) -Force -PassThru
 } | Sort-Object ParsedVersion -Descending
 
+if ($script:UseBetaBuilds -eq $True){
 # Save Both Newest Beta and Production to a Table
 $WebReleases = @($NewLinksBeta[0], $NewLinksRelease[0])
+
 
 # Determine Which Between Beta and Production is Highest/Newest.
 $NewestWebVersion = $null
@@ -650,6 +705,13 @@ foreach ($release in $WebReleases) {
 # Winning Online Build Info Between Beta and Production
 $NewestBuildName = $NewestWebVersion.outerText.ToString()
 $NewestBuildLink = $NewestWebVersion.href.ToString()
+}
+else
+{
+$WebReleases = @($NewLinksRelease[0])
+$NewestBuildName = $WebReleases.outerText.ToString()
+$NewestBuildLink = $WebReleases.href.ToString()
+}
 
 # Get Local Build Info
 $ToDateFirmware = (Get-ChildItem -Path "$downloadDir" -File).Name
@@ -833,6 +895,8 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
             Start-Sleep -Seconds 5
 
             if($Script:DownloadBackupOnly -eq $False){
+
+            Get-NetAdapter
 
             Show-Notification "Uploading Router Firmware"
 
