@@ -545,6 +545,7 @@ $variablesToStore = @{
     DDNSCertInstall       = $script:DDNSCertInstall
     CertInstallPath       = $script:CertInstallPath
     WebService            = $script:WebService
+    UseBetaBuilds         = $script:UseBetaBuilds
 }
 
 # Convert the hashtable to a multi-line string and save it to the .txt file
