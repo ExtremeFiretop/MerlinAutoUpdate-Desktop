@@ -430,6 +430,14 @@ if ($null -eq $script:CertInstallPath) {
 }
 }
 
+# Set System Values
+$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
+$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
+$script:LocalConfig = "$script:selectedDir\$script:Model Router Backups\ASUS Configs"
+$script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
+$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
+$script:FileType = "*.w"
+
 Function Get-NetAdapter {
 # Get the list of network adapters
 $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
@@ -477,6 +485,43 @@ while ($true) {
 }
 }
 
+Function Get-FactoryDefault {
+# Read the content of the file
+$content = Get-Content -Path "$ExtractedDir\Changelog-NG.txt" -Raw
+
+# Define a regex pattern to match the date entries
+$pattern = '\(\d{1,2}-[a-zA-Z]+-\d{4}\)'
+
+# Find all matches of the pattern in the content
+$matches = [regex]::Matches($content, $pattern)
+
+# Check if there are at least two date entries
+if ($matches.Count -lt 2) {
+    Write-Host "Not enough date entries found in the file."
+    exit
+}
+
+# Get the positions of the two latest date entries
+$startPos = $matches[0].Index + $matches[0].Length
+$endPos = $matches[1].Index
+
+# Extract the text between the two latest date entries
+$extractedText = $content.Substring($startPos, $endPos - $startPos)
+
+# Search for the string "factory default" within the extracted text
+if ($extractedText -match "factory default") {
+    $FactoryDefaultResults = Get-InputUI -formTitle 'Factory Defaults Recommended' -labelText 'This release recommends a factory default reset, would you like to continue now?' -inputType 'button'
+    if ($FactoryDefaultResults -eq $False)
+    {
+    Show-Notification "Cancelling update script"
+    Start-Sleep -Seconds 5
+    exit
+    }
+} else {
+    Write-Host "The text 'factory default' was not found between the two latest date entries."
+}
+}
+
 #Check if the file exists
 if (Test-Path $variablesFilePath) {
     # Read the content of the file
@@ -513,14 +558,6 @@ if (Test-Path $variablesFilePath) {
 } else {
     Get-UserInput
 }
-
-# Set System Values
-$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
-$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
-$script:LocalConfig = "$script:selectedDir\$script:Model Router Backups\ASUS Configs"
-$script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
-$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
-$script:FileType = "*.w"
 
 # Ensure directories exist
 Ensure-DirectoryExists -Path $script:downloadDir
@@ -847,6 +884,8 @@ $NewestBuildName"
 
         Unblock-File -Path $downloadPath
         Expand-Archive -Path $downloadPath -DestinationPath "$ExtractedDir" -Force
+
+        Get-FactoryDefault
 
         if ($script:ROGRouter -eq $True){
         # Select the firmware based on the $UseROGVersion switch
