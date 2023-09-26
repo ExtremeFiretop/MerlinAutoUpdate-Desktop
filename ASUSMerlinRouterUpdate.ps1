@@ -885,8 +885,6 @@ $NewestBuildName"
         Unblock-File -Path $downloadPath
         Expand-Archive -Path $downloadPath -DestinationPath "$ExtractedDir" -Force
 
-        Get-FactoryDefault
-
         if ($script:ROGRouter -eq $True){
         # Select the firmware based on the $UseROGVersion switch
         if ($UseROGVersion) {
@@ -935,6 +933,8 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
             Start-Sleep -Seconds 5
 
             if($Script:DownloadBackupOnly -eq $False){
+
+            Get-FactoryDefault
 
             Get-NetAdapter
 
