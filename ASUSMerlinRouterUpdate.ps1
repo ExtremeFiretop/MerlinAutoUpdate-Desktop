@@ -430,7 +430,7 @@ if ($null -eq $script:CertInstallPath) {
 }
 }
 
-Function Get-NetAdapter {
+Function Get-UniqueNetAdapter {
 # Get the list of network adapters
 $adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' }
 
@@ -933,7 +933,7 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
 
             Get-FactoryDefault
 
-            Get-NetAdapter
+            Get-UniqueNetAdapter
 
             Show-Notification "Uploading Router Firmware"
 
