@@ -178,7 +178,9 @@ function Ensure-DirectoryExists {
         $hWnd = (Get-Process -Id $ProcessId).MainWindowHandle
         [Win32.Functions]::ShowWindow($hWnd, $SW_MAXIMIZE)
     } else {
-        Write-Host "The ssh-keygen process did not start successfully."
+        Show-Notification "The ssh-keygen process did not start successfully."
+        Start-Sleep -Seconds 5
+        Exit
     }
 }
 
@@ -452,7 +454,14 @@ if ($adapters.Count -gt 1) {
 
 # Display the name of the active adapter being monitored
 Show-Notification "Connected being monitored is: $($adapter.Name)"
-ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+try {
+$ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
+& ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+} catch {
+Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+} finally {
+$ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+}
 
 # Monitor the adapter for disconnection and reconnection
 while ($true) {
@@ -559,6 +568,7 @@ $script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
 $script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
 $script:FileType = "*.w"
 $script:appDataLocalDir = "C:\ProgramData"
+$script:knownHostsFile = "$env:USERPROFILE\.ssh\known_hosts"
 
 # Ensure directories exist
 Ensure-DirectoryExists -Path $script:downloadDir
@@ -596,9 +606,8 @@ $script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath
 $variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
 
 # Define the path to the ssh key
-$localusername = $env:USERNAME
-$sshKeyPath = "C:\Users\$localusername\.ssh\id_rsa.pub"
-$vbsScriptPath = Join-Path $script:asusUpdateScriptDir "SendKeys.vbs"
+$sshKeyPath = "C:\Users\$env:USERNAME\.ssh\id_rsa.pub"
+$script:vbsScriptPath3 = Join-Path $script:asusUpdateScriptDir "SendKeys3.vbs"
 
 # Initialize a flag to check if the ssh key is generated
 $keyGenerated = $false
@@ -606,7 +615,7 @@ $keyGenerated = $false
 # Check if the ssh key exists
 if (-Not (Test-Path -Path $sshKeyPath)) {
     # If it doesn't exist, create the VBScript file dynamically
-    $vbsContent = @"
+    $vbsContent3 = @"
 set WshShell = WScript.CreateObject("WScript.Shell")
 WScript.Sleep 500
 WshShell.SendKeys "{ENTER}"
@@ -615,7 +624,7 @@ WshShell.SendKeys "{ENTER}"
 WScript.Sleep 500
 WshShell.SendKeys "{ENTER}"
 "@
-    Set-Content -Path $vbsScriptPath -Value $vbsContent
+    Set-Content -Path $script:vbsScriptPath3 -Value $vbsContent3
 
     # Call the function
     StartAndMaximizeSSHKeyGen | Out-Null
@@ -624,14 +633,15 @@ WshShell.SendKeys "{ENTER}"
     Start-Sleep -Seconds 1
     
     # Run the VBScript to send Enter keystrokes to the ssh-keygen process
-    Start-Process "wscript.exe" -ArgumentList $vbsScriptPath
+    Start-Process "wscript.exe" -ArgumentList $script:vbsScriptPath3
     
     # Wait for a few seconds to allow ssh-keygen to complete
     Start-Sleep -Seconds 5
     
     # Double check if the ssh key is generated
     if (-Not (Test-Path -Path $sshKeyPath)) {
-        Write-Host "Failed to generate SSH key." -ForegroundColor Red
+        Show-Notification "Failed to generate SSH key."
+        start-sleep -seconds 5
         exit 1
     }
     
@@ -812,13 +822,29 @@ $FirmwareBuildBetaNumber = ($LocalFirmwareBuild.FileName -replace '^.*_beta(\d+)
 if($BackupDDNSCert -eq $True){
 Show-Notification "Downloading DDNS Certs"
 
+# Check if the .ssh directory exists, if not create it
+if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force
+}
+    
+# Check if the known_hosts file exists, if not create it
+if (-not (Test-Path $script:knownHostsFile)) {
+New-Item -ItemType File -Path $script:knownHostsFile -Force
+}
+    
+# Check if the host key is already in the known_hosts file
+if (-not (Select-String -Path $script:knownHostsFile -Pattern $script:IP -Quiet)) {
+# Add the host key to the known_hosts file
+ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+}
+
 try {
  $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" | Out-null
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" | Out-null
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" | Out-null
 } catch {
-    Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+    Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
 }finally {
     $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
 }
@@ -910,10 +936,29 @@ $NewestBuildName"
 
             Show-Notification "Downloading Router Backups"
 
-            $configbackupresult = ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
-            if ($configbackupresult -like '*Host key verification failed.*') {
-            Show-Notification "Host key verification failed.
-Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
+            # Check if the .ssh directory exists, if not create it
+            if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
+                New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force
+            }
+    
+            # Check if the known_hosts file exists, if not create it
+            if (-not (Test-Path $script:knownHostsFile)) {
+                New-Item -ItemType File -Path $script:knownHostsFile -Force
+            }
+    
+            # Check if the host key is already in the known_hosts file
+            if (-not (Select-String -Path $script:knownHostsFile -Pattern $script:IP -Quiet)) {
+                # Add the host key to the known_hosts file
+                ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+            }
+
+            try {
+            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
+            & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            } catch {
+                Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            } finally {
+            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
 
             Start-Sleep -Seconds 1
@@ -922,7 +967,7 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
             & pscp.exe -scp -pw "$Password" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" | Out-null
             } catch {
-            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
             }finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
@@ -941,7 +986,7 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
             & pscp.exe -scp -pw "$Password" "$ExtractedVersionName" "${User}@${IP}:/home/root" | Out-null
             } catch {
-            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
             }finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
@@ -950,20 +995,26 @@ Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually
 
             Show-Notification "Flashing Router Firmware"
 
-            $flashresult = ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
-            if ($flashresult -like '*Host key verification failed.*'){
-            Show-Notification "Host key verification failed.
-Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
+             try {
+            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
+            & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            } catch {
+                Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            } finally {
+            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
 
             Start-Sleep -Seconds 120
 
             Show-Notification "Rebooting Router"
 
-            $rebootresult = ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
-            if ($rebootresult -like '*Host key verification failed.*') {
-            Show-Notification "Host key verification failed.
-Delete the file at: C:\Users\$env:UserName\.ssh\known_hosts and connect manually with Putty to accept the new fingerprint"
+            try {
+            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
+            & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+            } catch {
+                Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            } finally {
+            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
             }
 
