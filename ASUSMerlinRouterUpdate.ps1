@@ -378,11 +378,6 @@ if($script:IP -eq $Null){exit}
 $script:User = Get-InputUI -formTitle 'Enter Router User' -labelText 'Enter the Routers Username:' -noteText 'NOTE: Upper and lower case specific!'
 if($script:User -eq $Null){exit}
 
-# Password of router
-#NOTE: PASSWORD IS LETTER CASE SPECIFIC (Uppercase, lowercase)
-$script:Password = Get-InputUI -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
-if($script:Password -eq $Null){exit}
-
 # $True or $False does the Merlin .zip file contain a ROG build of the firmware?
 $script:UseBetaBuilds = Get-InputUI -formTitle 'Include Beta Builds?' -labelText 'Would you like to include beta builds?' -inputType 'button'
 if($script:UseBetaBuilds -eq $Null){exit}
@@ -590,7 +585,6 @@ $variablesToStore = @{
     Model                 = $script:Model
     IP                    = $script:IP
     User                  = $script:User
-    Password              = $script:Password
     DDNSDomain            = $script:DDNSDomain
     DDNSCertInstall       = $script:DDNSCertInstall
     CertInstallPath       = $script:CertInstallPath
@@ -685,6 +679,37 @@ if ($keyGenerated) {
     $form.Controls.Add($okButton)
     
     $form.ShowDialog()
+}
+
+$SCPKeyPath = "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk"
+
+if (-Not (Test-Path -Path $SCPKeyPath)) {
+    $vbsContent1 = @"
+set WshShell = WScript.CreateObject("WScript.Shell")
+WScript.Sleep 500
+WshShell.SendKeys "{ENTER}"
+"@
+
+$script:vbsScriptPath1 = Join-Path $script:asusUpdateScriptDir "SendKeys1.vbs"
+Set-Content -Path $script:vbsScriptPath1 -Value $vbsContent1
+
+& "C:\Program Files (x86)\WinSCP\WinSCP.exe" /keygen "C:\Users\$env:USERNAME\.ssh\id_rsa" /output="C:\Users\$env:USERNAME\.ssh\id_rsa.ppk"
+
+# Wait for a few seconds to allow SCP-keygen to complete
+Start-Sleep -Seconds 1
+    
+# Run the VBScript to send Enter keystrokes to the ssh-keygen process
+Start-Process "wscript.exe" -ArgumentList $vbsScriptPath1
+
+# Wait for a few seconds to allow ssh-keygen to complete
+Start-Sleep -Seconds 5
+    
+# Double check if the ssh key is generated
+if (-Not (Test-Path -Path $SCPKeyPath)) {
+        Show-Notification "Failed to generate SSH key."
+        start-sleep -seconds 5
+        exit 1
+    }
 }
 
 # Set the web page urls
@@ -826,25 +851,20 @@ Show-Notification "Downloading DDNS Certs"
 
 # Check if the .ssh directory exists, if not create it
 if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
-New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null 
 }
     
 # Check if the known_hosts file exists, if not create it
 if (-not (Test-Path $script:knownHostsFile)) {
-New-Item -ItemType File -Path $script:knownHostsFile -Force
-}
-    
-# Check if the host key is already in the known_hosts file
-if (-not (Select-String -Path $script:knownHostsFile -Pattern $script:IP -Quiet)) {
-# Add the host key to the known_hosts file
+New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
 ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
 }
 
 try {
  $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" | Out-null
-& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" | Out-null
-& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" | Out-null
+& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" 2>&1
+& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" 2>&1
+& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" 2>&1
 } catch {
     Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
     start-sleep -Seconds 5
@@ -942,17 +962,12 @@ $NewestBuildName"
 
             # Check if the .ssh directory exists, if not create it
             if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
-                New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force
+                New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
             }
     
             # Check if the known_hosts file exists, if not create it
             if (-not (Test-Path $script:knownHostsFile)) {
-                New-Item -ItemType File -Path $script:knownHostsFile -Force
-            }
-    
-            # Check if the host key is already in the known_hosts file
-            if (-not (Select-String -Path $script:knownHostsFile -Pattern $script:IP -Quiet)) {
-                # Add the host key to the known_hosts file
+                New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
                 ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
             }
 
@@ -971,7 +986,7 @@ $NewestBuildName"
 
             try {
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-            & pscp.exe -scp -pw "$Password" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" | Out-null
+            & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
             } catch {
             Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
             start-sleep -Seconds 5
@@ -992,7 +1007,7 @@ $NewestBuildName"
 
             try {
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-            & pscp.exe -scp -pw "$Password" "$ExtractedVersionName" "${User}@${IP}:/home/root" | Out-null
+            & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "$ExtractedVersionName" "${User}@${IP}:/home/root" 2>&1
             } catch {
             Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
             start-sleep -Seconds 5
