@@ -459,6 +459,8 @@ $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to 
 & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
 } catch {
 Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+start-sleep -Seconds 5
+exit
 } finally {
 $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
 }
@@ -845,6 +847,8 @@ try {
 & pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" | Out-null
 } catch {
     Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+    start-sleep -Seconds 5
+    exit
 }finally {
     $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
 }
@@ -957,6 +961,8 @@ $NewestBuildName"
             & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
             } catch {
                 Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+                start-sleep -Seconds 5
+                exit
             } finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
@@ -968,6 +974,8 @@ $NewestBuildName"
             & pscp.exe -scp -pw "$Password" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" | Out-null
             } catch {
             Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+            start-sleep -Seconds 5
+            exit
             }finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
@@ -987,6 +995,8 @@ $NewestBuildName"
             & pscp.exe -scp -pw "$Password" "$ExtractedVersionName" "${User}@${IP}:/home/root" | Out-null
             } catch {
             Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+            start-sleep -Seconds 5
+            exit
             }finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
@@ -1000,6 +1010,8 @@ $NewestBuildName"
             & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
             } catch {
                 Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+                start-sleep -Seconds 5
+                exit
             } finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
@@ -1013,6 +1025,8 @@ $NewestBuildName"
             & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
             } catch {
                 Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+                start-sleep -Seconds 5
+                exit
             } finally {
             $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
             }
