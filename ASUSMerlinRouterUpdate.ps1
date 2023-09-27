@@ -30,10 +30,10 @@ function Show-Notification {
 }
 
 # Ensure the script is run with elevated privileges
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Show-Notification "Please run script as Admin."
-    Break
-}
+#if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+#    Show-Notification "Please run script as Admin."
+#    Break
+#}
 
 # Define the registry paths and values
 $registryPaths = @(
@@ -449,15 +449,11 @@ if ($adapters.Count -gt 1) {
 
 # Display the name of the active adapter being monitored
 Show-Notification "Connected being monitored is: $($adapter.Name)"
-try {
-$ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
-& ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
-} catch {
+$rebootresult1 = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+if ($rebootresult1 -like '*Host key verification failed.*') {
 Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
 start-sleep -Seconds 5
 exit
-} finally {
-$ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
 }
 
 # Monitor the adapter for disconnection and reconnection
@@ -971,16 +967,11 @@ $NewestBuildName"
                 ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
             }
 
-            try {
-            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
-            & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
-            } catch {
-                Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
-                start-sleep -Seconds 5
-                exit
-            } finally {
-            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
-            }
+            $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            if ($saveconfigresult -like '*Host key verification failed.*') {
+            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            start-sleep -Seconds 5
+            exit}
 
             Start-Sleep -Seconds 1
 
@@ -1020,31 +1011,21 @@ $NewestBuildName"
 
             Show-Notification "Flashing Router Firmware"
 
-             try {
-            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
-            & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
-            } catch {
-                Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
-                start-sleep -Seconds 5
-                exit
-            } finally {
-            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
-            }
+            $flashresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            if ($flashresult -like '*Host key verification failed.*') {
+            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            start-sleep -Seconds 5
+            exit}
 
             Start-Sleep -Seconds 120
 
             Show-Notification "Rebooting Router"
 
-            try {
-            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating    
-            & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
-            } catch {
-                Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
-                start-sleep -Seconds 5
-                exit
-            } finally {
-            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
-            }
+            $rebootresult2 = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+            if ($rebootresult2 -like '*Host key verification failed.*') {
+            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            start-sleep -Seconds 5
+            exit}
             }
 
             exit
