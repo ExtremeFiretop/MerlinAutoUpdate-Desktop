@@ -3,6 +3,9 @@ Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
 This script allows you to remotely identify a beta or stable firmware update for an ASUS Merlin router, and automatically download and update via an unattended method.
 
+General Instructions:
+This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software.
+
 Important Notes:
 
 The script uses external tools like pscp.exe and ssh to interact with the router. Ensure these tools are available in the system's PATH or specify their full paths in the script.
@@ -40,9 +43,6 @@ Throughout the process, the script handles errors gracefully, notifying the user
 It also provides notifications about the progress of each step, such as downloading updates, flashing firmware, and rebooting the router.
 9. Cleanup and Exit:
 After completing the update process, the script cleans up any temporary files and exits, or if the user has chosen only to download backups, it skips the flashing and rebooting steps and exits after completing the backups.
-
-General Instructions:
-This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software.
 
 Router Setup:
 1. Enable SSH access, https://www.htpcguides.com/enable-ssh-asus-routers-without-ssh-keys/
