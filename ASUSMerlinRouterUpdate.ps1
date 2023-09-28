@@ -50,16 +50,37 @@ $script:appDataLocalDir = "C:\ProgramData"
 $script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
 $variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
 
-if (!(Test-Path $variablesFilePath)) {
-# Create a hashtable of the variables you want to store
-$variablesToStore = @{
-    selectedDir           = $script:selectedDir
-}
-
-# Convert the hashtable to a multi-line string and save it to the .txt file
-$variablesToStoreString = $variablesToStore.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
-$variablesToStoreString | Out-File $variablesFilePath -Encoding UTF8
-}
+#Check if the file exists
+if (Test-Path $variablesFilePath) {
+    # Read the content of the file
+    $content = Get-Content -Path $variablesFilePath
+    
+    # Check if the content is not null or empty
+    if ($null -ne $content -and $content -ne '') {
+        $isValid = $true
+        # Iterate over each line in the content
+        foreach ($line in $content) {
+            # Check if the line contains an '=' character, indicating a key-value pair
+            if ($line -match '=') {
+                # Split the line into key and value
+                $key, $value = $line -split '='
+                
+                # Check if both key and value are not null or empty
+                if ($null -ne $key -and $key -ne '' -and $null -ne $value -and $value -ne '') {
+                    # Set the variable with the key and value
+                    Set-Variable -Name "script:$key" -Value $value
+                }
+            } else {
+                $isValid = $false
+                break
+            }
+        }
+        if (-not $isValid) {
+            Remove-Item -Path $variablesFilePath -Force
+        }
+    } else {
+        Remove-Item -Path $variablesFilePath -Force
+    }
 
     # Check if the folder exists
 if (Test-Path -Path $script:downloadDir) {
