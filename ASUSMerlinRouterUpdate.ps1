@@ -998,8 +998,6 @@ Start-Sleep -Seconds 10
 
 if($Script:DownloadBackupOnly -eq $True){
 
-$BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
-
 Show-Notification "Downloading Router Backups"
 
 # Check if the .ssh directory exists, if not create it
@@ -1016,7 +1014,7 @@ ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $
 $saveconfigresult = $null
 
 try{
-$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1
 if ($LASTEXITCODE -ne 0) {
 throw "SSH command failed with exit code $LASTEXITCODE"
 }
