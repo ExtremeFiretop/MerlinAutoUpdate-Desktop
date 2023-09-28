@@ -81,7 +81,7 @@ if (Test-Path $variablesFilePath) {
     } else {
         Remove-Item -Path $variablesFilePath -Force
     }
-}
+ }
 
     # Check if the folder exists
 if (Test-Path -Path $script:downloadDir) {
@@ -115,10 +115,10 @@ if (Test-Path -Path $script:asusUpdateScriptDir) {
 Add-Type -AssemblyName System.Windows.Forms
 
 # Ensure the script is run with elevated privileges
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Show-Notification "Please run script as Admin."
-    Break
-}
+#if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+#    Show-Notification "Please run script as Admin."
+#    Break
+#}
 
 # Define the registry paths and values
 $registryPaths = @(
@@ -1006,7 +1006,7 @@ New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
 # Check if the known_hosts file exists, if not create it
 if (-not (Test-Path $script:knownHostsFile)) {
 New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
-ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
 }
 
 $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
@@ -1091,7 +1091,7 @@ $NewestBuildName"
             # Check if the known_hosts file exists, if not create it
             if (-not (Test-Path $script:knownHostsFile)) {
             New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
-            ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+            ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
             }
 
             $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
