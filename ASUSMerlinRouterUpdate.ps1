@@ -907,6 +907,42 @@ Start-Sleep -Seconds 10
 }
 }}
 
+$BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
+
+Show-Notification "Downloading Router Backups"
+
+# Check if the .ssh directory exists, if not create it
+if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
+}
+    
+# Check if the known_hosts file exists, if not create it
+if (-not (Test-Path $script:knownHostsFile)) {
+New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
+ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+}
+
+$saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+if ($saveconfigresult -like '*Host key verification failed.*') {
+Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+start-sleep -Seconds 5
+exit}
+
+Start-Sleep -Seconds 1
+
+try {
+$ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
+& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
+} catch {
+Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+start-sleep -Seconds 5
+exit
+}finally {
+$ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+}
+
+Start-Sleep -Seconds 5
+
 # Set Max Attempts to Retry Download if Hash Check Fails.
 $maxAttempts = 3
 $attempt = 1
@@ -952,41 +988,6 @@ $NewestBuildName"
         # Compare the expected and actual checksum values using a conditional statement
         if ($actualChecksum -in $expectedChecksums) {
             $validChecksum = $true
-            $BuildName = ($NewestBuildName -replace '\.zip$', '').TrimEnd('.')
-
-            Show-Notification "Downloading Router Backups"
-
-            # Check if the .ssh directory exists, if not create it
-            if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
-                New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
-            }
-    
-            # Check if the known_hosts file exists, if not create it
-            if (-not (Test-Path $script:knownHostsFile)) {
-                New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
-                ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
-            }
-
-            $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
-            if ($saveconfigresult -like '*Host key verification failed.*') {
-            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
-            start-sleep -Seconds 5
-            exit}
-
-            Start-Sleep -Seconds 1
-
-            try {
-            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-            & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
-            } catch {
-            Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
-            start-sleep -Seconds 5
-            exit
-            }finally {
-            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
-            }
-
-            Start-Sleep -Seconds 5
 
             if($Script:DownloadBackupOnly -eq $False){
 
