@@ -41,9 +41,6 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Break
 }
 
-# Set System Values
-$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
-$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
 $script:appDataLocalDir = "C:\ProgramData"
 
 # Define the path to the ASUSUpdateScript folder
@@ -57,31 +54,23 @@ if (Test-Path $variablesFilePath) {
     
     # Check if the content is not null or empty
     if ($null -ne $content -and $content -ne '') {
-        $isValid = $true
         # Iterate over each line in the content
         foreach ($line in $content) {
             # Check if the line contains an '=' character, indicating a key-value pair
             if ($line -match '=') {
                 # Split the line into key and value
                 $key, $value = $line -split '='
-                
-                # Check if both key and value are not null or empty
-                if ($null -ne $key -and $key -ne '' -and $null -ne $value -and $value -ne '') {
-                    # Set the variable with the key and value
-                    Set-Variable -Name "script:$key" -Value $value
+                Set-Variable -Name "script:$key" -Value $value
                 }
-            } else {
-                $isValid = $false
-                break
-            }
-        }
-        if (-not $isValid) {
-            Remove-Item -Path $variablesFilePath -Force
-        }
-    } else {
-        Remove-Item -Path $variablesFilePath -Force
-    }
  }
+ }
+ }
+
+ start-sleep -second 5
+
+ # Set System Values
+$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
+$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
 
     # Check if the folder exists
 if (Test-Path -Path $script:downloadDir) {
@@ -109,6 +98,9 @@ if (Test-Path -Path $script:asusUpdateScriptDir) {
 
     Show-Notification "Done! Please run to re-configure!"
 
+    start-sleep -second 5
+
+    exit 1
 
 } else {
 
@@ -532,14 +524,26 @@ if ($adapters.Count -gt 1) {
     $adapter = $adapters[0]
 }
 
+$rebootresult1 = $null
+
 # Display the name of the active adapter being monitored
 Show-Notification "Connected being monitored is: $($adapter.Name)"
-$rebootresult1 = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
-if ($rebootresult1 -like '*Host key verification failed.*') {
-Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-start-sleep -Seconds 5
-exit
+try{
+$rebootresult1 = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+ if ($LASTEXITCODE -ne 0) {
+throw "SSH command failed with exit code $LASTEXITCODE"
 }
+} catch {
+if ($rebootresult1 -like '*Host key verification failed.*') {
+Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
+start-sleep -seconds 5
+exit 1
+}
+else
+{
+Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
+exit 1
+}}
 
 # Monitor the adapter for disconnection and reconnection
 while ($true) {
@@ -938,7 +942,7 @@ New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
 # Check if the known_hosts file exists, if not create it
 if (-not (Test-Path $script:knownHostsFile)) {
 New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
-ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
 }
 
 try {
@@ -1009,11 +1013,24 @@ New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
 ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
 }
 
-$saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+$saveconfigresult = $null
+
+try{
+$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+if ($LASTEXITCODE -ne 0) {
+throw "SSH command failed with exit code $LASTEXITCODE"
+}
+} catch {
 if ($saveconfigresult -like '*Host key verification failed.*') {
+Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
+start-sleep -seconds 5
+exit 1
+}
+else
+{
 Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-start-sleep -Seconds 5
-exit}
+exit 1
+}}
 
 Start-Sleep -Seconds 1
 
@@ -1094,11 +1111,24 @@ $NewestBuildName"
             ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
             }
 
-            $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            $saveconfigresult = $null
+
+            try {
+            $saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+            throw "SSH command failed with exit code $LASTEXITCODE"
+            }
+            } catch {
             if ($saveconfigresult -like '*Host key verification failed.*') {
+            Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
+            start-sleep -seconds 5
+            exit 1
+            }
+            else
+            {
             Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-            start-sleep -Seconds 5
-            exit}
+            exit 1
+            }}
 
             Start-Sleep -Seconds 1
 
@@ -1134,21 +1164,48 @@ $NewestBuildName"
 
             Show-Notification "Flashing Router Firmware"
 
-            $flashresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            $flashresult = $null
+
+            try {
+            $flashresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+            throw "SSH command failed with exit code $LASTEXITCODE"
+            }
+            } catch {
             if ($flashresult -like '*Host key verification failed.*') {
+            Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
+            start-sleep -seconds 5
+            exit 1
+            }
+            else
+            {
             Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-            start-sleep -Seconds 5
-            exit}
+            exit 1
+            }}
 
             Start-Sleep -Seconds 120
 
             Show-Notification "Rebooting Router"
 
-            $rebootresult2 = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+            $rebootresult2 = $null
+
+            try {
+            $rebootresult2 = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+            throw "SSH command failed with exit code $LASTEXITCODE"
+            }
+            } catch {
             if ($rebootresult2 -like '*Host key verification failed.*') {
+            Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
+            start-sleep -seconds 5
+            exit 1
+            }
+            else
+            {
             Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-            start-sleep -Seconds 5
-            exit}
+            exit 1
+            }}
+
             }
 
             exit
