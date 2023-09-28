@@ -30,10 +30,10 @@ function Show-Notification {
 }
 
 # Ensure the script is run with elevated privileges
-#if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-#    Show-Notification "Please run script as Admin."
-#    Break
-#}
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Show-Notification "Please run script as Admin."
+    Break
+}
 
 # Define the registry paths and values
 $registryPaths = @(
