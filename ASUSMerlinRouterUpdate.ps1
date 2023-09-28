@@ -1,4 +1,6 @@
-Add-Type -AssemblyName System.Windows.Forms
+param (
+    [switch]$reset
+)
 
 # Show Windows Toast Notification Function
 function Show-Notification {
@@ -28,6 +30,67 @@ function Show-Notification {
     $Notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Merlin Auto Update Script")
     $Notifier.Show($Toast);
 }
+
+if ($reset) {
+
+Show-Notification "Resetting Merlin Auto Update to Defaults"
+
+# Ensure the script is run with elevated privileges
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Show-Notification "Please run script as Admin."
+    Break
+}
+
+# Set System Values
+$script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downloaded\"
+$script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
+$script:appDataLocalDir = "C:\ProgramData"
+
+# Define the path to the ASUSUpdateScript folder
+$script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
+$variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
+
+if (!(Test-Path $variablesFilePath)) {
+# Create a hashtable of the variables you want to store
+$variablesToStore = @{
+    selectedDir           = $script:selectedDir
+}
+
+# Convert the hashtable to a multi-line string and save it to the .txt file
+$variablesToStoreString = $variablesToStore.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+$variablesToStoreString | Out-File $variablesFilePath -Encoding UTF8
+}
+
+    # Check if the folder exists
+if (Test-Path -Path $script:downloadDir) {
+    # Remove all items in the folder
+    Remove-Item -Path "$script:downloadDir\*" -Recurse -Force
+    }
+
+    # Check if the folder exists
+if (Test-Path -Path $script:ExtractedDir) {
+    # Remove all items in the folder
+    Remove-Item -Path "$script:ExtractedDir\*" -Recurse -Force
+    }
+
+    # Check if the folder exists
+if (Test-Path -Path "$env:USERPROFILE\.ssh") {
+    # Remove all items in the folder
+    Remove-Item -Path "$env:USERPROFILE\.ssh\*" -Recurse -Force
+    }
+
+# Check if the folder exists
+if (Test-Path -Path $script:asusUpdateScriptDir) {
+    # Remove all items in the folder
+    Remove-Item -Path "$script:asusUpdateScriptDir\*" -Recurse -Force
+    }
+
+    Show-Notification "Done! Please run to re-configure!"
+
+
+} else {
+
+Add-Type -AssemblyName System.Windows.Forms
 
 # Ensure the script is run with elevated privileges
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -451,7 +514,7 @@ if ($adapters.Count -gt 1) {
 Show-Notification "Connected being monitored is: $($adapter.Name)"
 $rebootresult1 = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
 if ($rebootresult1 -like '*Host key verification failed.*') {
-Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
 start-sleep -Seconds 5
 exit
 }
@@ -862,7 +925,7 @@ try {
 & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" 2>&1
 & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" 2>&1
 } catch {
-    Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+    Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
     start-sleep -Seconds 5
     exit
 }finally {
@@ -907,6 +970,8 @@ Start-Sleep -Seconds 10
 }
 }}
 
+if($Script:DownloadBackupOnly -eq $True){
+
 $BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
 
 Show-Notification "Downloading Router Backups"
@@ -924,7 +989,7 @@ ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:k
 
 $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
 if ($saveconfigresult -like '*Host key verification failed.*') {
-Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
 start-sleep -Seconds 5
 exit}
 
@@ -934,11 +999,12 @@ try {
 $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
 & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
 } catch {
-Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
 start-sleep -Seconds 5
 exit
 }finally {
 $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+}
 }
 
 Start-Sleep -Seconds 5
@@ -991,6 +1057,40 @@ $NewestBuildName"
 
             if($Script:DownloadBackupOnly -eq $False){
 
+            $BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
+
+            Show-Notification "Downloading Router Backups"
+
+            # Check if the .ssh directory exists, if not create it
+            if (-not (Test-Path "$env:USERPROFILE\.ssh")) {
+            New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force | Out-Null
+            }
+    
+            # Check if the known_hosts file exists, if not create it
+            if (-not (Test-Path $script:knownHostsFile)) {
+            New-Item -ItemType File -Path $script:knownHostsFile -Force | Out-Null
+            ssh-keyscan -H $script:IP | Out-File -Append -Encoding ascii -FilePath $script:knownHostsFile
+            }
+
+            $saveconfigresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            if ($saveconfigresult -like '*Host key verification failed.*') {
+            Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
+            start-sleep -Seconds 5
+            exit}
+
+            Start-Sleep -Seconds 1
+
+            try {
+            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
+            & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
+            } catch {
+            Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
+            start-sleep -Seconds 5
+            exit
+            }finally {
+            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+            }
+
             Get-FactoryDefault
 
             Get-UniqueNetAdapter
@@ -1001,7 +1101,7 @@ $NewestBuildName"
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
             & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "$ExtractedVersionName" "${User}@${IP}:/home/root" 2>&1
             } catch {
-            Show-Notification "Error occurred during SCP command. Please connect manually first to accept the fingerprint."
+            Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
             start-sleep -Seconds 5
             exit
             }finally {
@@ -1014,7 +1114,7 @@ $NewestBuildName"
 
             $flashresult = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
             if ($flashresult -like '*Host key verification failed.*') {
-            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
             start-sleep -Seconds 5
             exit}
 
@@ -1024,7 +1124,7 @@ $NewestBuildName"
 
             $rebootresult2 = & ssh -t -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
             if ($rebootresult2 -like '*Host key verification failed.*') {
-            Show-Notification "Error occurred during SSH command. Please connect manually first to accept the fingerprint."
+            Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
             start-sleep -Seconds 5
             exit}
             }
@@ -1044,3 +1144,4 @@ exit
 }
 
 exit
+}
