@@ -45,12 +45,12 @@ $script:appDataLocalDir = "C:\ProgramData"
 
 # Define the path to the ASUSUpdateScript folder
 $script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
-$variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
+$script:variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
 
 #Check if the file exists
-if (Test-Path $variablesFilePath) {
+if (Test-Path $script:variablesFilePath) {
     # Read the content of the file
-    $content = Get-Content -Path $variablesFilePath
+    $content = Get-Content -Path $script:variablesFilePath
     
     # Check if the content is not null or empty
     if ($null -ne $content -and $content -ne '') {
@@ -107,10 +107,10 @@ if (Test-Path -Path $script:asusUpdateScriptDir) {
 Add-Type -AssemblyName System.Windows.Forms
 
 # Ensure the script is run with elevated privileges
-#if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-#    Show-Notification "Please run script as Admin."
-#    Break
-#}
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Show-Notification "Please run script as Admin."
+    Break
+}
 
 # Define the registry paths and values
 $registryPaths = @(
@@ -212,7 +212,7 @@ $script:appDataLocalDir = "C:\ProgramData"
 
 # Define the path to the ASUSUpdateScript folder
 $script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
-$variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
+$script:variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
 
 # Function to check and create directories if they don't exist
 function Ensure-DirectoryExists {
@@ -433,7 +433,7 @@ function Get-InputUI {
 
 Function Get-UserInput {
 
-$FirstRun = $True
+$script:FirstRun = $True
 
 $script:selectedDir = Select-Folder
 if ($null -eq $script:selectedDir) {
@@ -608,9 +608,9 @@ if ($extractedText -match "factory default") {
 }
 
 #Check if the file exists
-if (Test-Path $variablesFilePath) {
+if (Test-Path $script:variablesFilePath) {
     # Read the content of the file
-    $content = Get-Content -Path $variablesFilePath
+    $content = Get-Content -Path $script:variablesFilePath
     
     # Check if the content is not null or empty
     if ($null -ne $content -and $content -ne '') {
@@ -633,11 +633,11 @@ if (Test-Path $variablesFilePath) {
             }
         }
         if (-not $isValid) {
-            Remove-Item -Path $variablesFilePath -Force
+            Remove-Item -Path $script:variablesFilePath -Force
             Get-UserInput
         }
     } else {
-        Remove-Item -Path $variablesFilePath -Force
+        Remove-Item -Path $script:variablesFilePath -Force
         Get-UserInput
     }
 } else {
@@ -661,32 +661,33 @@ Ensure-DirectoryExists -Path $script:LocalConfig
 Ensure-DirectoryExists -Path $script:CertDownloadPath
 Ensure-DirectoryExists -Path $script:asusUpdateScriptDir
 
-if (!(Test-Path $variablesFilePath)) {
+if (!(Test-Path $script:variablesFilePath)) {
 # Create a hashtable of the variables you want to store
 $variablesToStore = @{
+    FirstRun              = $script:FirstRun
     selectedDir           = $script:selectedDir
+    Model                 = $script:Model
+    IP                    = $script:IP
+    User                  = $script:User
+    UseBetaBuilds         = $script:UseBetaBuilds
     ROGRouter             = $script:ROGRouter
     UseROGVersion         = $script:UseROGVersion
     DownloadBackupOnly    = $script:DownloadBackupOnly
     BackupDDNSCert        = $script:BackupDDNSCert
-    Model                 = $script:Model
-    IP                    = $script:IP
-    User                  = $script:User
     DDNSDomain            = $script:DDNSDomain
     DDNSCertInstall       = $script:DDNSCertInstall
-    CertInstallPath       = $script:CertInstallPath
     WebService            = $script:WebService
-    UseBetaBuilds         = $script:UseBetaBuilds
+    CertInstallPath       = $script:CertInstallPath
 }
 
 # Convert the hashtable to a multi-line string and save it to the .txt file
 $variablesToStoreString = $variablesToStore.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
-$variablesToStoreString | Out-File $variablesFilePath -Encoding UTF8
+$variablesToStoreString | Out-File $script:variablesFilePath -Encoding UTF8
 }
 
 # Define the path to the ASUSUpdateScript folder
 $script:asusUpdateScriptDir = Join-Path -Path $script:appDataLocalDir -ChildPath "ASUSUpdateScript"
-$variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
+$script:variablesFilePath = Join-Path -Path $asusUpdateScriptDir -ChildPath "variables.txt"
 
 # Define the path to the ssh key
 $sshKeyPath = "C:\Users\$env:USERNAME\.ssh\id_rsa.pub"
@@ -1016,7 +1017,7 @@ ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $
 $saveconfigresult = $null
 
 try{
-if($FirstRun){$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1}
+if($script:FirstRun -eq $True){$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1}
 else{
 $BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
 $saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1}
@@ -1040,7 +1041,9 @@ Start-Sleep -Seconds 1
 
 try {
 $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
+if($script:FirstRun -eq $True){& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/PrimaryBackup.CFG" "$LocalConfig" 2>&1}
+else
+{& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1}
 } catch {
 Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
 start-sleep -Seconds 5
@@ -1097,6 +1100,31 @@ $NewestBuildName"
         # Compare the expected and actual checksum values using a conditional statement
         if ($actualChecksum -in $expectedChecksums) {
             $validChecksum = $true
+
+            # Check if the file exists
+            if (Test-Path $script:variablesFilePath) {
+                # Read the file content into an array of strings, each string is a line from the file
+                $fileContent = Get-Content $script:variablesFilePath
+    
+                # Initialize an empty array to hold the modified content
+                $modifiedContent = @()
+    
+                # Iterate over each line in the file content
+                foreach ($line in $fileContent) {
+                    # Check if the line contains the string 'FirstRun'
+                    if ($line -match 'FirstRun') {
+                        # Replace the 'FirstRun' value with '$False'
+                        $modifiedLine = $line -replace 'FirstRun\s*=\s*[^\s]+', 'FirstRun=False'
+                        $modifiedContent += $modifiedLine
+                    } else {
+                        # If the line does not contain 'FirstRun', add it to the modified content without changes
+                        $modifiedContent += $line
+                    }
+                }
+    
+                # Write the modified content back to the file
+                $modifiedContent | Out-File $script:variablesFilePath -Encoding UTF8
+            }
 
             if($Script:DownloadBackupOnly -eq $False){
 
