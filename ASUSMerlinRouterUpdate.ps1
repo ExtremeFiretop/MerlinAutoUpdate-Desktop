@@ -433,6 +433,8 @@ function Get-InputUI {
 
 Function Get-UserInput {
 
+$FirstRun = $True
+
 $script:selectedDir = Select-Folder
 if ($null -eq $script:selectedDir) {
     Write-Host "No directory selected. Exiting script."
@@ -1014,7 +1016,11 @@ ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $
 $saveconfigresult = $null
 
 try{
-$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1
+if($FirstRun){$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1}
+else{
+$BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
+$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1}
+
 if ($LASTEXITCODE -ne 0) {
 throw "SSH command failed with exit code $LASTEXITCODE"
 }
