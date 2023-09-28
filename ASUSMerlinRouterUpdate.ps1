@@ -81,6 +81,7 @@ if (Test-Path $variablesFilePath) {
     } else {
         Remove-Item -Path $variablesFilePath -Force
     }
+}
 
     # Check if the folder exists
 if (Test-Path -Path $script:downloadDir) {
