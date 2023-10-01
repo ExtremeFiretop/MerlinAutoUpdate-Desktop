@@ -65,4 +65,6 @@ Script Setup:
 6. Paste this SSH key into the router Admin console under: "Administration -> System -> Authorized Keys"
 7. Script downloads the firmware and confirmation backups to the directories you selected before ever attempting a flash.
 8. Any locally installed files for the script will always be found here: C:\ProgramData\ASUSUpdateScript
-9. Reminder... If you would like to reset the script to zero or change the variables, please delete or modify the variables.txt file found: C:\ProgramData\ASUSUpdateScript
+9. Reminder...
+10. If you would like to reset the script to zero run the script with a -reset paremeter. (i.e Path\MerlinAutoUpdate.exe -reset)
+11. Or to change the variables, please modify the variables.txt file found: C:\ProgramData\ASUSUpdateScript
