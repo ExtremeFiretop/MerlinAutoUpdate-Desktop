@@ -1,9 +1,11 @@
+## MerlinAutoUpdate-Desktop
 # Automated/Automatic and Unattended Asuswrt-Merlin Firmware Updates
 Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
+## Features
 This script allows you to remotely identify a beta or stable firmware update for an ASUS Merlin router, and automatically download and update via an unattended method from any Windows Desktop on the same network.
 
-General Instructions:
+## General Instructions:
 This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software.
 
 Important Notes:
@@ -11,7 +13,7 @@ Important Notes:
 The script uses external tools like pscp.exe and ssh to interact with the router. Ensure these tools are available in the system's PATH or specify their full paths in the script.
 Before running such scripts, always backup your router's configuration and any other important data. There's always a risk of data loss or other issues when updating firmware.
 
-Here's a breakdown of what the script does:
+## Here's a breakdown of what the script does:
 
 ![Detailed Firmware Update Script Flowchart](https://github.com/Firetop/MerlinAutoUpdate/assets/1971404/684572ec-aed2-4a55-a83f-7b10dea112eb)
 
@@ -44,27 +46,28 @@ It also provides notifications about the progress of each step, such as download
 9. Cleanup and Exit:
 After completing the update process, the script cleans up any temporary files and exits, or if the user has chosen only to download backups, it skips the flashing and rebooting steps and exits after completing the backups.
 
-Router Setup:
+## Router Setup:
 1. Enable SSH access, https://www.htpcguides.com/enable-ssh-asus-routers-without-ssh-keys/
 2. Enable Custom Scripts. Go to Administration -> System -> Persistent JFFS2 partition and make sure that Enable JFFS custom scripts and configs is selected as "yes"
 3. If you want to access via SSH throught the open internet (LAN + WAN). I highly recommend changing the port and disabling username password authentication (only using RSA keys).
 
-Script Setup:
+## Script Setup:
 1. Download the script, copy it to your desired location on your Windows 10 computer.
-2. Open the script and modify the parameters prompted. (These are stored locally only under: C:\ProgramData\ASUSUpdateScript)
+2. Open the script and modify the parameters prompted. (These are stored locally only under: ```C:\ProgramData\ASUSUpdateScript```)
 3. The script will only run once if you run it once, it does not automatically schedule a re-run any time in the future.
 4. To automatically re-run the script, link to a to task scheduler to run automatically at night, etc.
-5. If you would like to reset the script to zero or change the variables, please delete or modify the variables.txt file found: C:\ProgramData\ASUSUpdateScript
+5. If you would like to reset the script to zero run the script with a -reset paremeter.  - ```(i.e Path\MerlinAutoUpdate.exe -reset) ```
+6. Or to change the variables, please modify the variables.txt file found: ```C:\ProgramData\ASUSUpdateScript```
 
-(FYI) System Setup:
+## (FYI) System Setup:
 1. The script will download and install Putty and WinSCP as system requirements if not already installed.
 2. If you already have Putty as a portable .EXE that is not sufficent, and it will install it anyways.
 3. The script will also generate an SSH key for the router.
-4. If something does not work while generating the key, please report an issue, you may generate a ssh key manually using the following command in Powershell: "ssh-keygen" (And use all default values: "Enter", "Enter", "Enter")
-5. The SSH Key will be generated in the following location on Windows 10: "C:\Users\USERNAME\.ssh\id_rsa.pub"
+4. If something does not work while generating the key, please report an issue, you may generate a ssh key manually using the following command in CMD: ```ssh-keygen``` (And use all default values: "Enter", "Enter", "Enter")
+5. The SSH Key will be generated in the following location on Windows 10: ```C:\Users\USERNAME\.ssh\id_rsa.pub```
 6. Paste this SSH key into the router Admin console under: "Administration -> System -> Authorized Keys"
 7. Script downloads the firmware and confirmation backups to the directories you selected before ever attempting a flash.
-8. Any locally installed files for the script will always be found here: C:\ProgramData\ASUSUpdateScript
+8. Any locally installed files for the script will always be found here: ```C:\ProgramData\ASUSUpdateScript```
 9. Reminder...
-10. If you would like to reset the script to zero run the script with a -reset paremeter. (i.e Path\MerlinAutoUpdate.exe -reset)
-11. Or to change the variables, please modify the variables.txt file found: C:\ProgramData\ASUSUpdateScript
+10. If you would like to reset the script to zero run the script with a -reset paremeter.  - ```(i.e Path\MerlinAutoUpdate.exe -reset) ```
+11. Or to change the variables, please modify the variables.txt file found: ```C:\ProgramData\ASUSUpdateScript```
