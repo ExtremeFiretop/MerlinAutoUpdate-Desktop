@@ -14,7 +14,7 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 ## General Instructions:
 This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software.
 
-Important Notes:
+- Important Notes:
 
 The script uses external tools like pscp.exe and ssh to interact with the router. Ensure these tools are available in the system's PATH or specify their full paths in the script.
 Before running such scripts, always backup your router's configuration and any other important data. There's always a risk of data loss or other issues when updating firmware.
@@ -66,14 +66,14 @@ After completing the update process, the script cleans up any temporary files an
 6. Or to change the variables, please modify the variables.txt file found: ```C:\ProgramData\ASUSUpdateScript```
 
 ## (FYI) System Setup:
-1. The script will download and install Putty and WinSCP as system requirements if not already installed.
-2. If you already have Putty as a portable .EXE that is not sufficent, and it will install it anyways.
-3. The script will also generate an SSH key for the router.
-4. If something does not work while generating the key, please report an issue, you may generate a ssh key manually using the following command in CMD: ```ssh-keygen``` (And use all default values: "Enter", "Enter", "Enter")
-5. The SSH Key will be generated in the following location on Windows 10: ```C:\Users\USERNAME\.ssh\id_rsa.pub```
-6. Paste this SSH key into the router Admin console under: "Administration -> System -> Authorized Keys"
-7. Script downloads the firmware and confirmation backups to the directories you selected before ever attempting a flash.
-8. Any locally installed files for the script will always be found here: ```C:\ProgramData\ASUSUpdateScript```
-9. Reminder...
-10. If you would like to reset the script to zero run the script with a -reset paremeter.  - ```(i.e Path\MerlinAutoUpdate.exe -reset) ```
-11. Or to change the variables, please modify the variables.txt file found: ```C:\ProgramData\ASUSUpdateScript```
+- The script will download and install Putty and WinSCP as system requirements if not already installed.
+- If you already have Putty as a portable .EXE that is not sufficent, and it will install it anyways.
+- The script will also generate an SSH key for the router.
+- If something does not work while generating the key, please report an issue, you may generate a ssh key manually using the following command in CMD: ```ssh-keygen``` (And use all default values: "Enter", "Enter", "Enter")
+- The SSH Key will be generated in the following location on Windows 10: ```C:\Users\USERNAME\.ssh\id_rsa.pub```
+- Paste this SSH key into the router Admin console under: "Administration -> System -> Authorized Keys"
+- Script downloads the firmware and confirmation backups to the directories you selected before ever attempting a flash.
+- Any locally installed files for the script will always be found here: ```C:\ProgramData\ASUSUpdateScript```
+- Reminder...
+- If you would like to reset the script to zero run the script with a -reset paremeter.  - ```(i.e Path\MerlinAutoUpdate.exe -reset) ```
+- Or to change the variables, please modify the variables.txt file found: ```C:\ProgramData\ASUSUpdateScript```
