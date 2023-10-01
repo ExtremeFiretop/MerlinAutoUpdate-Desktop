@@ -5,10 +5,11 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 ## Features
 1. Remotely identify a beta or stable firmware download for an ASUS Merlin router, and automatically download via an unattended method from any Windows Desktop on the same network.
 2. Remotely Flash/Update to a beta or stable firmware update for an ASUS Merlin router via an unattended method from any Windows Desktop on the same network.
-3. Backs up any router configurations before doing a flash and downloads them to a directory of choice
-4. Backs up and downloads any DDNS certificates (With a choice to install it on the local PC)
-5. Checks to confirm no factory reset is recommended, if it is, it waits and prompts for user feedback
-6. Reboots router before to clear memory, and after the firmware flash is completed to finalize the update. 
+3. Works with both ROG and non-ROG routers, if it's a ROG router simply select if you want to use the ROG or Pure Build.
+4. Backs up any router configurations before doing a flash and downloads them to a directory of choice
+5. Backs up and downloads any DDNS certificates (With a choice to install it on the local PC)
+6. Checks to confirm no factory reset is recommended, if it is, it waits and prompts for user feedback
+7. Reboots router before to clear memory, and after the firmware flash is completed to finalize the update. 
 
 ## General Instructions:
 This script is targeted to be used on Asus routers running the modified Asuswrt-Merlin software.
