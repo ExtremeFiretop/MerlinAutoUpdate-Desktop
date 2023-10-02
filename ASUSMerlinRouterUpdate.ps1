@@ -874,7 +874,7 @@ $NewestBuildLink = $WebReleases.href.ToString()
 }
 
 # Get Local Build Info
-$ToDateFirmware = (Get-ChildItem -Path "$downloadDir" -File).Name
+$Script:ToDateFirmware = (Get-ChildItem -Path "$downloadDir" -File).Name
 $LocalVersion = $ToDateFirmware -replace "^.*?([0-9]+\.[0-9]+(?:_[0-9]+)?).*?$", '$1'
 $major, $minor, $build = $LocalVersion -split '\.|_' | ForEach-Object { [int]$_ }
 # Construct a new Version object from the version components
@@ -1019,8 +1019,8 @@ $saveconfigresult = $null
 try{
 if($script:FirstRun -eq $True){$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1}
 else{
-$BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
-$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1}
+$Script:BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
+$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $Script:BuildName.CFG" 2>&1}
 
 if ($LASTEXITCODE -ne 0) {
 throw "SSH command failed with exit code $LASTEXITCODE"
@@ -1128,8 +1128,6 @@ $NewestBuildName"
 
             if($Script:DownloadBackupOnly -eq $False){
 
-            $BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
-
             Show-Notification "Downloading Router Backups"
 
             # Check if the .ssh directory exists, if not create it
@@ -1146,7 +1144,10 @@ $NewestBuildName"
             $saveconfigresult = $null
 
             try {
-            $saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $BuildName.CFG" 2>&1
+            if($script:FirstRun -eq $True){$saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save PrimaryBackup.CFG" 2>&1}
+            else{
+            $Script:BuildName = ($ToDateFirmware -replace '\.zip$', '').TrimEnd('.')
+            $saveconfigresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "nvram save $Script:BuildName.CFG" 2>&1}
             if ($LASTEXITCODE -ne 0) {
             throw "SSH command failed with exit code $LASTEXITCODE"
             }
@@ -1166,7 +1167,9 @@ $NewestBuildName"
 
             try {
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-            & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1
+            if($script:FirstRun -eq $True){& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/PrimaryBackup.CFG" "$LocalConfig" 2>&1}
+            else
+            {& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1}
             } catch {
             Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
             start-sleep -Seconds 5
@@ -1199,23 +1202,19 @@ $NewestBuildName"
             $flashresult = $null
 
             try {
-            $flashresult = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
-            if ($LASTEXITCODE -ne 0) {
+            $flashresult = & ssh -t -o BatchMode=yes -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
+            if ($LASTEXITCODE -ne 1) {
             throw "SSH command failed with exit code $LASTEXITCODE"
-            }
-            } catch {
+            }} catch {
             if ($flashresult -like '*Host key verification failed.*') {
             Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
             start-sleep -seconds 5
-            exit 1
-            }
-            else
-            {
-            Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-            exit 1
+            exit 1}
+            if ($flashresult -like '*Updating pureUBI metadata*') {
+            Show-Notification "Upgrade successful!"
             }}
 
-            Start-Sleep -Seconds 120
+            Start-Sleep -Seconds 60
 
             Show-Notification "Rebooting Router"
 
