@@ -448,6 +448,7 @@ $unsupportedModels = @(
     'XT12'
 )
 
+
 # Set Router Values
 
 # Extact model as listed here: https://sourceforge.net/projects/asuswrt-merlin/files/
@@ -456,7 +457,7 @@ $script:Model = Get-InputUI -formTitle 'Enter Router Model' -labelText 'Enter Ro
 if($script:Model -eq $Null){exit}
 
 if ($unsupportedModels -contains $script:Model) {
-Write-Host "Unsupported model entered. Exiting script."
+Write-Error "Unsupported model entered. Exiting script."
 Show-Notification "Unsupported model entered. Exiting script."
 start-sleep 5
 exit
