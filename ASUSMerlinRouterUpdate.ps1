@@ -441,12 +441,26 @@ if ($null -eq $script:selectedDir) {
     exit
 }
 
+$unsupportedModels = @(
+    'RT-AC86U', 'RT-AC1900', 'RT-AC87U', 'RT-AC5300',
+    'RT-AC3200', 'RT-AC3100', 'RT-AC88U', 'RT-AC68U',
+    'RT-AC66U', 'RT-AC56U', 'RT-AC66U_B1', 'RT-N66U',
+    'XT12'
+)
+
 # Set Router Values
 
 # Extact model as listed here: https://sourceforge.net/projects/asuswrt-merlin/files/
 #NOTE: MODEL IS LETTER CASE SPECIFIC (Uppercase, lowercase)
 $script:Model = Get-InputUI -formTitle 'Enter Router Model' -labelText 'Enter Router Model (As found on:' -noteText 'NOTE: Upper and lower case specific!' -linkText 'SourceForge)' -linkUrl 'https://sourceforge.net/projects/asuswrt-merlin/files/'
 if($script:Model -eq $Null){exit}
+
+if ($unsupportedModels -contains $script:Model) {
+Write-Host "Unsupported model entered. Exiting script."
+Show-Notification "Unsupported model entered. Exiting script."
+start-sleep 5
+exit
+}
 
 # IP Address of router
 $script:IP = Get-InputUI -formTitle 'Enter Router IP Address' -labelText 'Enter the Routers IP Address:'
