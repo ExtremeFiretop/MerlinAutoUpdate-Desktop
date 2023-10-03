@@ -8,6 +8,7 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 - GT-AX6000
 - GT-AX11000
 - GT-AX11000_PRO
+- GT-AC2900
 - RT-AX88U_PRO
 - RT-AX86U_PRO
 - RT-AX68U
@@ -18,7 +19,7 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 - RT-AX88U
 
 ## UNSUPPORTED MODELS: (Single image models) - i.e. Any model that uses a .trx file
-- GT-AC2900
+
 - RT-AC86U
 - RT-AC1900
 - RT-AC87U
