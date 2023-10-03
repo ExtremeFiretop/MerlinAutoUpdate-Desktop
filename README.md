@@ -2,6 +2,37 @@
 # Automated/Automatic and Unattended Asuswrt-Merlin Firmware Updates
 Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
+## SUPPORTED MODELS:
+- GT-AXE11000
+- GT-AXE16000
+- GT-AX6000
+- GT-AX11000
+- GT-AX11000_PRO
+- RT-AX88U_PRO
+- RT-AX86U_PRO
+- RT-AX68U
+- RT-AX86U
+- RT-AX56U
+- RT-AX58U
+- RT-AX3000
+- RT-AX88U
+
+## UNSUPPORTED MODELS:
+- GT-AC2900
+- RT-AC86U
+- RT-AC1900
+- RT-AC87U
+- RT-AC5300
+- RT-AC3200
+- RT-AC3100
+- RT-AC88U
+- RT-AC68U
+- RT-AC66U
+- RT-AC56U
+- RT-AC66U_B1
+- RT-N66U
+- XT12
+
 ## Features
 - Remotely identify a beta or stable firmware download for an ASUS Merlin router, and automatically download via an unattended method from any Windows Desktop on the same network.
 - Remotely Flash/Update to a beta or stable firmware update for an ASUS Merlin router via an unattended method from any Windows Desktop on the same network.
