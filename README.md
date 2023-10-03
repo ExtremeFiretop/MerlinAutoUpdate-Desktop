@@ -2,7 +2,7 @@
 # Automated/Automatic and Unattended Asuswrt-Merlin Firmware Updates
 Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
-## SUPPORTED MODELS:
+## SUPPORTED MODELS: (Multi-image models) - i.e. Any model that uses a .w file
 - GT-AXE11000
 - GT-AXE16000
 - GT-AX6000
@@ -17,7 +17,7 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 - RT-AX3000
 - RT-AX88U
 
-## UNSUPPORTED MODELS:
+## UNSUPPORTED MODELS: (Single image models) - i.e. Any model that uses a .trx file
 - GT-AC2900
 - RT-AC86U
 - RT-AC1900
