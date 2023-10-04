@@ -17,10 +17,11 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 - RT-AX58U
 - RT-AX3000
 - RT-AX88U
+- RT-AC86U
+- XT12
 
 ## UNSUPPORTED MODELS: (Single image models) - i.e. Any model that uses a .trx file
 
-- RT-AC86U
 - RT-AC1900
 - RT-AC87U
 - RT-AC5300
@@ -32,7 +33,6 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
 - RT-AC56U
 - RT-AC66U_B1
 - RT-N66U
-- XT12
 
 ## Features
 - Remotely identify a beta or stable firmware download for an ASUS Merlin router, and automatically download via an unattended method from any Windows Desktop on the same network.
