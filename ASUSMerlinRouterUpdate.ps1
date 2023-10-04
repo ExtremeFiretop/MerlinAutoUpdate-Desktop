@@ -444,7 +444,7 @@ if ($null -eq $script:selectedDir) {
 $unsupportedModels = @(
     'RT-AC1900', 'RT-AC87U', 'RT-AC5300',
     'RT-AC3200', 'RT-AC3100', 'RT-AC88U', 'RT-AC68U',
-    'RT-AC66U', 'RT-AC56U', 'RT-AC66U_B1', 'RT-N66U',
+    'RT-AC66U', 'RT-AC56U', 'RT-AC66U_B1', 'RT-N66U'
 )
 
 
