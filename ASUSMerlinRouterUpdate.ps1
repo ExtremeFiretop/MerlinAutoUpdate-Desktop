@@ -464,15 +464,15 @@ exit
 $script:IP = Get-InputUI -formTitle 'Enter Router IP Address' -labelText 'Enter the Routers IP Address:'
 if($script:IP -eq $Null){exit}
 
-# Password of router
-#NOTE: PASSWORD IS LETTER CASE SPECIFIC (Uppercase, lowercase)
-$script:Password = Get-InputUI -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
-if($script:Password -eq $Null){exit}
-
 # Username of router
 #NOTE: USER IS LETTER CASE SPECIFIC (Uppercase, lowercase)
 $script:User = Get-InputUI -formTitle 'Enter Router User' -labelText 'Enter the Routers Username:' -noteText 'NOTE: Upper and lower case specific!'
 if($script:User -eq $Null){exit}
+
+# Password of router
+#NOTE: PASSWORD IS LETTER CASE SPECIFIC (Uppercase, lowercase)
+$script:Password = Get-InputUI -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
+if($script:Password -eq $Null){exit}
 
 # $True or $False does the Merlin .zip file contain a ROG build of the firmware?
 $script:UseBetaBuilds = Get-InputUI -formTitle 'Include Beta Builds?' -labelText 'Would you like to include beta builds?' -inputType 'button'
@@ -1096,7 +1096,7 @@ $NewestBuildName"
 
         if ($script:ROGRouter -eq $True){
         # Select the firmware based on the $UseROGVersion switch
-        if ($UseROGVersion) {
+        if ($UseROGVersion -eq $True) {
         $ExtractedVersionName = Get-ChildItem -Path $ExtractedDir -Recurse -Include $FileType | 
         Where-Object { $_.Name -like '*_rog_*' } | 
         Select-Object -ExpandProperty FullName
@@ -1245,39 +1245,18 @@ $NewestBuildName"
             -F 'firmver=3.0.0.4' `
             -F "file=@$ExtractedDir\$fileName" `
             --cookie 'C:\Windows\Temp\Upgradecookie.txt' 2>&1
-            if ($LASTEXITCODE -ne 0) {
-            throw "SSH command failed with exit code $LASTEXITCODE"
+            if ($flashresult -like '*ASUS Wireless Router Web Manager*') {
+            Show-Notification "Upgrade successful!"
             }} catch {
+            if ($LASTEXITCODE -ne 0) {
+            throw "SSH command failed with exit code $LASTEXITCODE"}
             if (!$flashresult -like '*ASUS Wireless Router Web Manager*') {
             Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
             start-sleep -seconds 5
             exit 1}
-            if ($flashresult -like '*ASUS Wireless Router Web Manager*') {
-            Show-Notification "Upgrade successful!"
-            }}
-
-            Start-Sleep -Seconds 60
-
-            Show-Notification "Rebooting Router"
-
-            $rebootresult2 = $null
-
-            try {
-            $rebootresult2 = & ssh -t -o BatchMode=yes -o ConnectTimeout=10 -i ~/.ssh/id_rsa "${User}@${IP}" "reboot" 2>&1
-            if ($LASTEXITCODE -ne 0) {
-            throw "SSH command failed with exit code $LASTEXITCODE"
             }
-            } catch {
-            if ($rebootresult2 -like '*Host key verification failed.*') {
-            Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
-            start-sleep -seconds 5
-            exit 1
-            }
-            else
-            {
-            Show-Notification "Error occurred during SSH command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-            exit 1
-            }}
+
+            Start-Sleep -Seconds 5
 
             }
 
