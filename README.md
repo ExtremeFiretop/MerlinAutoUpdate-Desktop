@@ -2,9 +2,17 @@
 # Automated/Automatic and Unattended Asuswrt-Merlin Firmware Updates
 Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router Firmware Script
 
-## SUPPORTED MODELS: (Multi-image models) - i.e. Any model that uses a .w file
+## TESTED MODELS (Multi-image models) - i.e. Any model that uses a .w file
 
  - GT-AXE11000 (Tested)
+ - RT-AX88U (Tested)
+
+## UNSUPPORTED MODELS: (Single image models) - i.e. Any model that uses a .trx file
+
+ - RT-AC68U (Blocked)
+
+## UNTESTED MODELS: (Multi-image models) - i.e. Any model that uses a .w file
+
  - GT-AXE16000 (Untested)
  - GT-AX6000 (Untested)
  - GT-AX11000 (Untested)
@@ -13,28 +21,28 @@ Windows Desktop Script to Automatically and Remotely Update ASUS Merlin Router F
  - RT-AX88U_PRO (Untested)
  - RT-AX86U_PRO (Untested)
  - RT-AX68U (Untested)
- - RT-AX86U (Tested)
+ - RT-AX86U (Untested)
  - RT-AX56U (Untested)
  - RT-AX58U (Untested)
  - RT-AX3000 (Untested)
- - RT-AX88U (Tested)
  - RT-AC86U (Untested)
  - XT12 (Untested)
+ 
+## UNTESTED MODELS: (Single image models) - i.e. Any model that uses a .trx file
 
-## UNSUPPORTED MODELS: (Single image models) - i.e. Any model that uses a .trx file
-
- - RT-AC86U (No)
- - RT-AC1900 (No)
- - RT-AC87U (No)
- - RT-AC5300 (No)
- - RT-AC3200 (No)
- - RT-AC3100 (No)
- - RT-AC88U (No)
- - RT-AC68U (No)
- - RT-AC66U (No)
- - RT-AC56U (No)
- - RT-AC66U_B1 (No)
- - RT-N66U (No)
+ - RT-AC88U (Untested)
+ - RT-AC86U (Untested)
+ - RT-AC5300 (Untested)
+ - RT-AC3100 (Untested)
+ - 
+ - RT-AC1900 (Untested)
+ - RT-AC87U (Untested)
+ - RT-AC3200 (Untested)
+ - RT-AC3100 (Untested)
+ - RT-AC66U (Untested)
+ - RT-AC56U (Untested)
+ - RT-AC66U_B1 (Untested)
+ - RT-N66U (Untested)
 
 ## Features
 - Remotely identify a beta or stable firmware download for an ASUS Merlin router, and automatically download via an unattended method from any Windows Desktop on the same network.
