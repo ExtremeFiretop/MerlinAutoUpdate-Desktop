@@ -442,9 +442,7 @@ if ($null -eq $script:selectedDir) {
 }
 
 $unsupportedModels = @(
-    'RT-AC1900', 'RT-AC87U', 'RT-AC5300',
-    'RT-AC3200', 'RT-AC3100', 'RT-AC88U', 'RT-AC68U',
-    'RT-AC66U', 'RT-AC56U', 'RT-AC66U_B1', 'RT-N66U'
+ 'RT-AC68U'
 )
 
 
@@ -465,6 +463,11 @@ exit
 # IP Address of router
 $script:IP = Get-InputUI -formTitle 'Enter Router IP Address' -labelText 'Enter the Routers IP Address:'
 if($script:IP -eq $Null){exit}
+
+# Password of router
+#NOTE: PASSWORD IS LETTER CASE SPECIFIC (Uppercase, lowercase)
+$script:Password = Get-InputUI -formTitle 'Enter Router Password' -labelText 'Enter the Routers Password:' -noteText 'NOTE: Upper and lower case specific!'
+if($script:Password -eq $Null){exit}
 
 # Username of router
 #NOTE: USER IS LETTER CASE SPECIFIC (Uppercase, lowercase)
@@ -684,6 +687,7 @@ $variablesToStore = @{
     IP                    = $script:IP
     User                  = $script:User
     UseBetaBuilds         = $script:UseBetaBuilds
+    Password              = $script:Password
     ROGRouter             = $script:ROGRouter
     UseROGVersion         = $script:UseROGVersion
     DownloadBackupOnly    = $script:DownloadBackupOnly
@@ -964,9 +968,9 @@ ssh-keyscan -H $script:IP 2>$null | Out-File -Append -Encoding ascii -FilePath $
 
 try {
  $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" 2>&1
-& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" 2>&1
-& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" 2>&1
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/domain.key" "$script:CertDownloadPath" 2>&1
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.cer" "$script:CertDownloadPath" 2>&1
+& pscp.exe -scp -pw $Password "${User}@${IP}:/jffs/.le/$DDNSDomain/fullchain.pem" "$script:CertDownloadPath" 2>&1
 } catch {
     Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
     start-sleep -Seconds 5
@@ -1055,9 +1059,9 @@ Start-Sleep -Seconds 1
 
 try {
 $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-if($script:FirstRun -eq $True){& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/PrimaryBackup.CFG" "$LocalConfig" 2>&1}
+if($script:FirstRun -eq $True){& pscp.exe -scp -pw $Password "${User}@${IP}:/home/root/PrimaryBackup.CFG" "$LocalConfig" 2>&1}
 else
-{& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1}
+{& pscp.exe -scp -pw $Password "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1}
 } catch {
 Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
 start-sleep -Seconds 5
@@ -1140,6 +1144,10 @@ $NewestBuildName"
                 $modifiedContent | Out-File $script:variablesFilePath -Encoding UTF8
             }
 
+            if($Script:DownloadBackupOnly -eq $True){
+            Show-Notification "Firmware Update Downloaded!"
+            }
+
             if($Script:DownloadBackupOnly -eq $False){
 
             Show-Notification "Downloading Router Backups"
@@ -1181,9 +1189,9 @@ $NewestBuildName"
 
             try {
             $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-            if($script:FirstRun -eq $True){& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/PrimaryBackup.CFG" "$LocalConfig" 2>&1}
+            if($script:FirstRun -eq $True){& pscp.exe -scp -pw $Password "${User}@${IP}:/home/root/PrimaryBackup.CFG" "$LocalConfig" 2>&1}
             else
-            {& pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1}
+            {& pscp.exe -scp -pw $Password "${User}@${IP}:/home/root/${BuildName}.CFG" "$LocalConfig" 2>&1}
             } catch {
             Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
             start-sleep -Seconds 5
@@ -1196,35 +1204,55 @@ $NewestBuildName"
 
             Get-UniqueNetAdapter
 
-            Show-Notification "Uploading Router Firmware"
-
-            try {
-            $ErrorActionPreference = 'Stop'  # Set the error action preference to 'Stop' to make non-terminating errors terminating
-            & pscp.exe -scp -i "C:\Users\$env:USERNAME\.ssh\id_rsa.ppk" "$ExtractedVersionName" "${User}@${IP}:/home/root" 2>&1
-            } catch {
-            Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
-            start-sleep -Seconds 5
-            exit
-            }finally {
-            $ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
-            }
-
             Start-Sleep -Seconds 5
 
             Show-Notification "Flashing Router Firmware"
 
             $flashresult = $null
 
+            #Curl.exe on Windows for Login
+            # Base64 encode the credentials in the format username:password
+            $script:mypw = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${User}:${Password}"))
+
             try {
-            $flashresult = & ssh -t -o BatchMode=yes -i ~/.ssh/id_rsa "${User}@${IP}" "hnd-write $fileName" 2>&1
-            if ($LASTEXITCODE -ne 1) {
+            $loginresult = & curl.exe "http://${IP}/login.cgi" -X POST `
+            --referer http://${IP}/Main_Login.asp `
+            --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0' `
+            -H 'Accept-Language: en-US,en;q=0.5' `
+            -H 'Content-Type: application/x-www-form-urlencoded' `
+            -H "Origin: http://${IP}" `
+            -H 'Connection: keep-alive' `
+            --data-raw "group_id=&action_mode=&action_script=&action_wait=5&current_page=Main_Login.asp&next_page=index.asp&login_authorization=$script:mypw" `
+            --cookie-jar 'C:\Windows\Temp\Upgradecookie.txt' 2>&1
+            } catch {
+            if (!$loginresult -match "index.asp"){Show-Notification "Unable to Login to Router!"}
+            }
+
+            #Curl.exe on Windows for Upgrade
+
+            try {
+            $flashresult = & curl.exe "http://${IP}/upgrade.cgi" `
+            --referer http://${IP}/Advanced_FirmwareUpgrade_Content.asp `
+            --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0' `
+            -H 'Accept-Language: en-US,en;q=0.5' `
+            -H "Origin: http://${IP}/" `
+            -F 'current_page=Advanced_FirmwareUpgrade_Content.asp' `
+            -F 'next_page=' `
+            -F 'action_mode=' `
+            -F 'action_script=' `
+            -F 'action_wait=' `
+            -F 'preferred_lang=EN' `
+            -F 'firmver=3.0.0.4' `
+            -F "file=@$ExtractedDir\$fileName" `
+            --cookie 'C:\Windows\Temp\Upgradecookie.txt' 2>&1
+            if ($LASTEXITCODE -ne 0) {
             throw "SSH command failed with exit code $LASTEXITCODE"
             }} catch {
-            if ($flashresult -like '*Host key verification failed.*') {
+            if (!$flashresult -like '*ASUS Wireless Router Web Manager*') {
             Show-Notification "Error: $_. Please check the username, SSH key, or IP address by connecting through terminal manually."
             start-sleep -seconds 5
             exit 1}
-            if ($flashresult -like '*Updating pureUBI metadata*') {
+            if ($flashresult -like '*ASUS Wireless Router Web Manager*') {
             Show-Notification "Upgrade successful!"
             }}
 
