@@ -666,7 +666,7 @@ $script:downloadDir = "$script:selectedDir\$script:Model Firmware Release\Downlo
 $script:ExtractedDir = "$script:selectedDir\$script:Model Firmware Release\Production\"
 $script:LocalConfig = "$script:selectedDir\$script:Model Router Backups\ASUS Configs"
 $script:CertDownloadPath = "$script:LocalConfig\SSL Cert"
-$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::InternetExplorer"
+$script:Browser = "[Microsoft.PowerShell.Commands.PSUserAgent]::Edge"
 $script:FileType = "*.w"
 $script:appDataLocalDir = "C:\ProgramData"
 $script:knownHostsFile = "$env:USERPROFILE\.ssh\known_hosts"
@@ -1065,9 +1065,7 @@ else
 } catch {
 Show-Notification "Error occurred during SCP command. Please confirm the SSH key is entered in: Administration -> System -> Authorized Keys"
 start-sleep -Seconds 5
-exit
-}finally {
-$ErrorActionPreference = 'Continue'  # Reset the error action preference to its default value 'Continue'
+exit 1
 }
 }
 
